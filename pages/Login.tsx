@@ -4,24 +4,70 @@ import { useApp } from '../store/AppContext';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 const Login: React.FC = () => {
-  const { users, setCurrentUser } = useApp();
+  const { setCurrentUser, setUsers } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = users.find(u => u.email === email);
-    if (user) {
-      if (user.isBlocked) {
-        setError('Your account has been blocked.');
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const raw = await response.text();
+      const data = raw
+        ? (() => {
+            try {
+              return JSON.parse(raw);
+            } catch {
+              return { message: raw };
+            }
+          })()
+        : null;
+
+      if (!response.ok) {
+        setError(data?.message || 'Invalid email or password.');
         return;
       }
-      setCurrentUser(user);
+
+      const token = data?.token || data?.accessToken || data?.jwt;
+      if (token) {
+        localStorage.setItem('silverlink_token', token);
+      }
+
+      const loggedInUser = {
+        id: data?.user?.id || Math.random().toString(36).slice(2, 11),
+        email: data?.user?.email || email,
+        name: data?.user?.name || email,
+        role: data?.user?.role || 'USER',
+        isBlocked: Boolean(data?.user?.isBlocked),
+        joinedEvents: data?.user?.joinedEvents || [],
+      };
+
+      setUsers((prev) => {
+        const exists = prev.some((user) => user.email === loggedInUser.email);
+        return exists ? prev.map((user) => (user.email === loggedInUser.email ? loggedInUser : user)) : [...prev, loggedInUser];
+      });
+      setCurrentUser(loggedInUser);
       window.location.hash = '/';
-    } else {
-      setError('Invalid email or password.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to connect to login API.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -83,9 +129,11 @@ const Login: React.FC = () => {
 
             <button 
               type="submit"
-              className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-emerald-100 hover:bg-emerald-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
+              disabled={isSubmitting}
+              className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-emerald-100 hover:bg-emerald-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
             >
-              Log In <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              {isSubmitting ? 'Signing In...' : 'Log In'}
+              {!isSubmitting && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
             </button>
           </form>
 

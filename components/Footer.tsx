@@ -11,9 +11,9 @@ const Footer: React.FC = () => {
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 bg-emerald-500 rounded flex items-center justify-center">
-                <span className="text-white font-bold">S</span>
+                <span className="text-white font-bold">T</span>
               </div>
-              <span className="text-2xl font-bold text-white">SilverLink</span>
+              <span className="text-2xl font-bold text-white">TimeMatter</span>
             </div>
             <p className="text-sm leading-relaxed mb-6">
               Empowering the aging society through community engagement, wellness programs, and social connectivity.

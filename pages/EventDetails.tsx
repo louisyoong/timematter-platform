@@ -1,16 +1,102 @@
 
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
-import { Calendar, MapPin, Users, Share2, Check, ArrowLeft, Info, AlertTriangle } from 'lucide-react';
+import { Calendar, MapPin, Users, Share2, Check, ArrowLeft, Info, AlertTriangle, Clock3, Ticket, Sparkles } from 'lucide-react';
+
+const getEventIdFromHash = () => {
+  const match = window.location.hash.match(/^#\/event\/(.+)$/);
+  return match ? decodeURIComponent(match[1]) : '';
+};
+
+const createSeededRandom = (seedText: string) => {
+  let seed = 0;
+
+  for (let index = 0; index < seedText.length; index += 1) {
+    seed = (seed * 31 + seedText.charCodeAt(index)) >>> 0;
+  }
+
+  return () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+};
+
+const pickOne = <T,>(options: T[], random: () => number) => {
+  return options[Math.floor(random() * options.length)];
+};
+
+const pickMany = (options: string[], count: number, random: () => number) => {
+  const pool = [...options];
+  const result: string[] = [];
+
+  while (pool.length > 0 && result.length < count) {
+    const index = Math.floor(random() * pool.length);
+    result.push(pool.splice(index, 1)[0]);
+  }
+
+  return result;
+};
+
+const buildEventExtras = (event: {
+  id: string;
+  title: string;
+  category: string;
+  location: string;
+  description: string;
+  organizerName: string;
+}) => {
+  const random = createSeededRandom(`${event.id}-${event.title}`);
+  const durations = ['60 minutes', '75 minutes', '90 minutes', '2 hours'];
+  const audienceTypes = ['First-time attendees welcome', 'Best for active seniors', 'Caregivers are invited too', 'Small-group community session'];
+  const bringItems = [
+    'Bring a water bottle',
+    'Wear comfortable clothing',
+    'Bring your reading glasses if needed',
+    'Arrive 15 minutes early for check-in',
+    'Bring a light sweater for indoor comfort',
+    'Keep your phone on silent during the session',
+  ];
+  const highlights = [
+    'Guided warm-up and introductions',
+    'Light refreshments after the session',
+    'Friendly facilitator support throughout',
+    'Short break halfway through the event',
+    'Interactive activities designed for comfort',
+    'Photo corner for community memories',
+  ];
+  const hostTitles = [
+    'Community Wellness Lead',
+    'Senior Program Coordinator',
+    'Neighborhood Activity Host',
+    'Certified Volunteer Facilitator',
+  ];
+  const hostFocus = [
+    'creating safe, welcoming spaces for older adults',
+    'running accessible social programs for the local community',
+    'helping seniors stay active, connected, and confident',
+    'designing calm, inclusive activities with a gentle pace',
+  ];
+
+  return {
+    duration: pickOne(durations, random),
+    seatsLeft: Math.floor(random() * 18) + 6,
+    audienceNote: pickOne(audienceTypes, random),
+    checklist: pickMany(bringItems, 3, random),
+    highlights: pickMany(highlights, 3, random),
+    hostTitle: pickOne(hostTitles, random),
+    hostBio: `${event.organizerName} focuses on ${pickOne(hostFocus, random)}. This ${event.category.toLowerCase()} session at ${event.location} is structured to feel approachable, social, and easy to join.`,
+    extraDescription: `Expect a relaxed format with clear guidance, easy pacing, and time to talk with other attendees. Every part of ${event.title} is planned to help participants feel comfortable from arrival through closing.`,
+  };
+};
 
 const EventDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
   const { events, currentUser, joinEvent } = useApp();
   const [joinStatus, setJoinStatus] = useState<{ success: boolean; message: string } | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const id = getEventIdFromHash();
 
   const event = events.find(e => e.id === id);
+  const eventExtras = event ? buildEventExtras(event) : null;
 
   if (!event) {
     return (
@@ -85,7 +171,23 @@ const EventDetails: React.FC = () => {
               {event.description.split('\n').map((para, i) => (
                 <p key={i} className="mb-4">{para}</p>
               ))}
+              {eventExtras && <p className="mb-4">{eventExtras.extraDescription}</p>}
             </div>
+
+            {eventExtras && (
+              <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {eventExtras.highlights.map((highlight) => (
+                  <div key={highlight} className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 text-emerald-600">
+                        <Sparkles size={18} />
+                      </div>
+                      <p className="text-base text-gray-700 font-medium">{highlight}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             
             <div className="mt-12 pt-12 border-t border-gray-100">
                <h3 className="text-xl font-bold text-gray-900 mb-6">Event Host</h3>
@@ -95,7 +197,8 @@ const EventDetails: React.FC = () => {
                  </div>
                  <div>
                     <h4 className="font-bold text-gray-900">{event.organizerName}</h4>
-                    <p className="text-sm text-gray-500">Verified Community Partner</p>
+                    <p className="text-sm text-gray-500">{eventExtras?.hostTitle || 'Verified Community Partner'}</p>
+                    {eventExtras && <p className="text-sm text-gray-600 mt-2 max-w-xl">{eventExtras.hostBio}</p>}
                     <button className="text-emerald-600 text-sm font-bold mt-1 hover:underline">Contact Host</button>
                  </div>
                </div>
@@ -124,6 +227,29 @@ const EventDetails: React.FC = () => {
                     <p className="text-gray-900 font-bold">{event.location}</p>
                   </div>
                 </div>
+                {eventExtras && (
+                  <>
+                    <div className="flex gap-4">
+                      <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <Clock3 size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Duration</p>
+                        <p className="text-gray-900 font-bold">{eventExtras.duration}</p>
+                        <p className="text-sm text-gray-500">{eventExtras.audienceNote}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <Ticket size={24} />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Availability</p>
+                        <p className="text-gray-900 font-bold">{eventExtras.seatsLeft} seats left</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {joinStatus?.success ? (
@@ -157,6 +283,20 @@ const EventDetails: React.FC = () => {
               >
                 <Share2 size={20} /> Share Event
               </button>
+
+              {eventExtras && (
+                <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <h4 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3">What to Know</h4>
+                  <div className="space-y-2">
+                    {eventExtras.checklist.map((item) => (
+                      <div key={item} className="flex items-start gap-2 text-sm text-gray-600">
+                        <Check size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 text-white">
