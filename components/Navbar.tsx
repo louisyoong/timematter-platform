@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Search, MapPin, User as UserIcon, LogOut, Menu, X, PlusCircle } from 'lucide-react';
 import { useApp } from '../store/AppContext';
 import { UserRole } from '../types';
+import { supabase, TM_TOKEN_KEY } from '../services/supabase';
 
 const Navbar: React.FC = () => {
   const { currentUser, setCurrentUser } = useApp();
@@ -10,8 +11,11 @@ const Navbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    localStorage.removeItem(TM_TOKEN_KEY);
+    await supabase.auth.signOut();
     setCurrentUser(null);
+    window.location.hash = '/login';
   };
 
   const NavLinks = () => (
@@ -25,8 +29,8 @@ const Navbar: React.FC = () => {
       )}
       <a href="#/articles" className="hover:text-emerald-600 font-medium">Articles</a>
       <a href="#/help" className="hover:text-emerald-600 font-medium">Help Center</a>
-      {currentUser?.role === UserRole.SUPER_ADMIN && (
-        <a href="#/admin" className="text-red-600 font-bold">Admin</a>
+      {currentUser?.role === UserRole.ADMIN && (
+        <a href="#/admin" className="font-bold text-red-600">All Users</a>
       )}
     </>
   );

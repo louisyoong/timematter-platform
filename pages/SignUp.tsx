@@ -1,435 +1,117 @@
 import React, { useState } from 'react';
-import { useApp } from '../store/AppContext';
-import { UserRole } from '../types';
-import {
-  ArrowRight,
-  CalendarDays,
-  FileBadge2,
-  Lock,
-  Mail,
-  MapPin,
-  ShieldCheck,
-  UserRound,
-} from 'lucide-react';
+import { supabase } from '../services/supabase';
 
-type FormState = {
-  ages: string;
-  title: 'Mr' | 'Ms' | '';
-  gender: string;
-  dateOfBirth: string;
-  nationality: string;
-  religion: string;
-  address: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  isCompany: boolean;
-};
+type Provider = 'google' | 'facebook';
 
-type FileState = {
-  identityCardFront: File | null;
-  identityCardBack: File | null;
-  profilePhoto: File | null;
-};
-
-const initialFormState: FormState = {
-  ages: '',
-  title: '',
-  gender: '',
-  dateOfBirth: '',
-  nationality: '',
-  religion: '',
-  address: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
-  isCompany: false,
-};
-
-const initialFileState: FileState = {
-  identityCardFront: null,
-  identityCardBack: null,
-  profilePhoto: null,
-};
+const providerConfig: { id: Provider; label: string; icon: React.ReactNode }[] = [
+  {
+    id: 'google',
+    label: 'Continue with Google',
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <path
+          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+          fill="#4285F4"
+        />
+        <path
+          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+          fill="#34A853"
+        />
+        <path
+          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+          fill="#FBBC05"
+        />
+        <path
+          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+          fill="#EA4335"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'facebook',
+    label: 'Continue with Facebook',
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <path
+          d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+          fill="#1877F2"
+        />
+      </svg>
+    ),
+  },
+];
 
 const SignUp: React.FC = () => {
-  const { setCurrentUser, setUsers } = useApp();
-  const [formData, setFormData] = useState<FormState>(initialFormState);
-  const [files, setFiles] = useState<FileState>(initialFileState);
+  const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updateField = (field: keyof FormState, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const validateFile = (file: File, allowedTypes: string[]) => allowedTypes.includes(file.type);
-
-  const handleFileChange = (
-    field: keyof FileState,
-    selectedFile: File | null,
-    allowedTypes: string[],
-    errorMessage: string
-  ) => {
+  const handleOAuth = async (provider: Provider) => {
     setError('');
-    if (!selectedFile) {
-      setFiles((prev) => ({ ...prev, [field]: null }));
-      return;
-    }
+    setLoadingProvider(provider);
 
-    if (!validateFile(selectedFile, allowedTypes)) {
-      setError(errorMessage);
-      return;
-    }
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
 
-    setFiles((prev) => ({ ...prev, [field]: selectedFile }));
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo },
+    });
+
+    if (oauthError) {
+      setError(oauthError.message);
+      setLoadingProvider(null);
+    }
+    // On success the browser is redirected — no cleanup needed
   };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Password and confirm password must match.');
-      return;
-    }
-
-    if (!files.identityCardFront || !files.identityCardBack) {
-      setError('Identity card front and back images are required.');
-      return;
-    }
-
-    const payload = new FormData();
-    payload.append('identityCardFront', files.identityCardFront);
-    payload.append('identityCardBack', files.identityCardBack);
-    if (files.profilePhoto) payload.append('profilePhoto', files.profilePhoto);
-
-    payload.append('ages', formData.ages);
-    payload.append('title', formData.title);
-    payload.append('gender', formData.gender);
-    payload.append('dateOfBirth', formData.dateOfBirth);
-    payload.append('nationality', formData.nationality);
-    payload.append('religion', formData.religion);
-    payload.append('address', formData.address);
-    payload.append('email', formData.email);
-    payload.append('password', formData.password);
-    payload.append('confirmPassword', formData.confirmPassword);
-    payload.append('isCompany', 'false');
-    payload.append('role', UserRole.USER);
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch('http://localhost:3000/api/auth/signup', {
-        method: 'POST',
-        body: payload,
-      });
-
-      const raw = await response.text();
-      const data = raw ? (() => {
-        try {
-          return JSON.parse(raw);
-        } catch {
-          return { message: raw };
-        }
-      })() : null;
-
-      if (!response.ok) {
-        setError(data?.message || 'Sign up failed.');
-        return;
-      }
-
-      const signedUpUser = {
-        id: data?.user?.id || Math.random().toString(36).slice(2, 11),
-        email: data?.user?.email || formData.email,
-        name: data?.user?.name || formData.email,
-        role: data?.user?.role || UserRole.USER,
-        isBlocked: Boolean(data?.user?.isBlocked),
-        joinedEvents: data?.user?.joinedEvents || [],
-      };
-
-      setUsers((prev) => [...prev, signedUpUser]);
-      setCurrentUser(signedUpUser);
-      setSuccess(data?.message || 'Account created successfully.');
-      setFormData(initialFormState);
-      setFiles(initialFileState);
-      window.location.hash = '/';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to connect to sign up API.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const inputClassName =
-    'w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all';
-
-  const iconInputClassName = `w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`;
 
   return (
-    <div className="min-h-[80vh] bg-[linear-gradient(180deg,#f4fbf7_0%,#ffffff_100%)] px-4 py-12 md:py-20">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[0.95fr_1.35fr]">
-        <section className="rounded-[2.5rem] bg-emerald-700 p-8 text-white shadow-2xl shadow-emerald-200 md:p-10">
-          <div className="mb-10">
-            <span className="inline-flex items-center rounded-full bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-50">
-              SilverLink Sign Up
-            </span>
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-20 bg-[linear-gradient(180deg,#f4fbf7_0%,#ffffff_100%)]">
+      <div className="w-full max-w-md">
+        <div className="rounded-[2.5rem] bg-white border border-emerald-100 shadow-2xl shadow-emerald-100 p-8 md:p-12">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center rounded-full bg-emerald-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-600 mb-6">
+              TimeMatter
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome</h1>
+            <p className="text-gray-500 text-sm">Sign in to your account to continue</p>
           </div>
-          <h1 className="max-w-sm text-4xl font-bold leading-tight">Create your SilverLink account.</h1>
-          <p className="mt-5 max-w-md text-sm leading-7 text-emerald-50/85">
-            Upload the required identity card images, complete your personal details, and submit the form to the sign up API.
+
+          {error && (
+            <div className="mb-6 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 text-center">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {providerConfig.map(({ id, label, icon }) => (
+              <button
+                key={id}
+                type="button"
+                disabled={loadingProvider !== null}
+                onClick={() => handleOAuth(id)}
+                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-4 px-6 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingProvider === id ? (
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-emerald-600" />
+                ) : (
+                  icon
+                )}
+                {loadingProvider === id ? 'Redirecting…' : label}
+              </button>
+            ))}
+          </div>
+
+          <p className="mt-8 text-center text-xs text-gray-400 leading-relaxed">
+            By continuing, you agree to TimeMatter's Terms of Service and Privacy Policy.
           </p>
+        </div>
 
-          <div className="mt-10 space-y-4">
-            <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
-              <p className="text-sm font-semibold">Required files</p>
-              <p className="mt-2 text-sm text-emerald-50/80">Identity card front and back are required in JPG or JPEG. Profile photo is optional in JPG or JPEG.</p>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-black/10 p-5">
-              <p className="text-sm font-semibold">Submission payload</p>
-              <p className="mt-2 text-sm text-emerald-50/80">The form sends `isCompany=false` and defaults `role` to `USER`.</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[2.5rem] border border-emerald-100 bg-white p-6 shadow-2xl shadow-emerald-100 md:p-10">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-            <p className="mt-2 text-sm text-gray-500">Complete the form below and we will send the data to the sign up API.</p>
-          </div>
-
-          <form onSubmit={handleSignUp} className="space-y-6">
-            {error && <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</div>}
-            {success && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{success}</div>}
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Identity Card Front (JPG, JPEG)</label>
-                <input
-                  type="file"
-                  accept=".jpg,.jpeg,image/jpeg"
-                  required
-                  className={inputClassName}
-                  onChange={(e) =>
-                    handleFileChange(
-                      'identityCardFront',
-                      e.target.files?.[0] || null,
-                      ['image/jpeg'],
-                      'Identity card front must be a JPG or JPEG file.'
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Identity Card Back (JPG, JPEG)</label>
-                <input
-                  type="file"
-                  accept=".jpg,.jpeg,image/jpeg"
-                  required
-                  className={inputClassName}
-                  onChange={(e) =>
-                    handleFileChange(
-                      'identityCardBack',
-                      e.target.files?.[0] || null,
-                      ['image/jpeg'],
-                      'Identity card back must be a JPG or JPEG file.'
-                    )
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Ages</label>
-                <div className="relative">
-                  <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="Enter age"
-                    className={iconInputClassName}
-                    value={formData.ages}
-                    onChange={(e) => updateField('ages', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Profile Photo (JPG, JPEG)</label>
-                <input
-                  type="file"
-                  accept=".jpg,.jpeg,image/jpeg"
-                  className={inputClassName}
-                  onChange={(e) =>
-                    handleFileChange(
-                      'profilePhoto',
-                      e.target.files?.[0] || null,
-                      ['image/jpeg'],
-                      'Profile photo must be a JPG or JPEG file.'
-                    )
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Mr / Ms</label>
-                <div className="relative">
-                  <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                  <select
-                    required
-                    className={iconInputClassName}
-                    value={formData.title}
-                    onChange={(e) => updateField('title', e.target.value as FormState['title'])}
-                  >
-                    <option value="">Select title</option>
-                    <option value="Mr">Mr</option>
-                    <option value="Ms">Ms</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Gender</label>
-                <div className="relative">
-                  <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                  <select
-                    required
-                    className={iconInputClassName}
-                    value={formData.gender}
-                    onChange={(e) => updateField('gender', e.target.value)}
-                  >
-                    <option value="">Select gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Date of Birth (DD/MM/YYYY)</label>
-                <div className="relative">
-                  <CalendarDays className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                  <input
-                    type="text"
-                    required
-                    placeholder="21/01/1980"
-                    pattern="^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{2,4}$"
-                    className={iconInputClassName}
-                    value={formData.dateOfBirth}
-                    onChange={(e) => updateField('dateOfBirth', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Nationality</label>
-                <div className="relative">
-                  <FileBadge2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter nationality"
-                    className={iconInputClassName}
-                    value={formData.nationality}
-                    onChange={(e) => updateField('nationality', e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Religion</label>
-                <div className="relative">
-                  <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter religion"
-                    className={iconInputClassName}
-                    value={formData.religion}
-                    onChange={(e) => updateField('religion', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Address</label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-5 text-gray-300" size={20} />
-                  <textarea
-                    required
-                    rows={1}
-                    placeholder="Enter address"
-                    className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-4 pl-12 pr-4 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-emerald-500"
-                    value={formData.address}
-                    onChange={(e) => updateField('address', e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                  <input
-                    type="email"
-                    required
-                    placeholder="name@email.com"
-                    className={iconInputClassName}
-                    value={formData.email}
-                    onChange={(e) => updateField('email', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter password"
-                    className={iconInputClassName}
-                    value={formData.password}
-                    onChange={(e) => updateField('password', e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="px-2 text-xs font-bold uppercase tracking-widest text-gray-400">Confirm Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                <input
-                  type="password"
-                  required
-                  placeholder="Confirm password"
-                  className={iconInputClassName}
-                  value={formData.confirmPassword}
-                  onChange={(e) => updateField('confirmPassword', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-5 font-bold text-white shadow-xl shadow-emerald-100 transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isSubmitting ? 'Submitting...' : 'Create Account'}
-              {!isSubmitting && <ArrowRight size={20} />}
-            </button>
-          </form>
-        </section>
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Already have an account?{' '}
+          <a href="#/login" className="font-bold text-emerald-600 hover:underline">
+            Sign In
+          </a>
+        </p>
       </div>
     </div>
   );
