@@ -15,6 +15,8 @@ import CompleteProfile from './pages/CompleteProfile';
 import AdminDashboard from './pages/AdminDashboard';
 import Blocked from './pages/Blocked';
 import ResetPassword from './pages/ResetPassword';
+import AccountSettings from './pages/AccountSettings';
+import SwitchOrganization from './pages/SwitchOrganization';
 import { supabase, BACKEND_URL, TM_TOKEN_KEY } from './services/supabase';
 import { UserRole } from './types';
 
@@ -118,6 +120,8 @@ const AppContent: React.FC = () => {
     if (hash === '/blocked') return <Blocked />;
     if (hash === '/admin') return <AdminDashboard />;
     if (hash.startsWith('/reset-password')) return <ResetPassword />;
+    if (hash === '/account-settings') return <AccountSettings />;
+    if (hash === '/switch-organization') return <SwitchOrganization />;
     if (hash.startsWith('/event/')) return <EventDetails />;
 
     const eventMatch = hash.match(/\/event\/(.+)/);
