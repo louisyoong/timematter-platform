@@ -5,6 +5,8 @@ import { User, Event, Article, UserRole } from '../types';
 interface AppContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
+  viewAsAttendee: boolean;
+  setViewAsAttendee: (v: boolean) => void;
   events: Event[];
   setEvents: (events: Event[]) => void;
   articles: Article[];
@@ -25,6 +27,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('silverlink_user');
     return saved ? JSON.parse(saved) : null;
   });
+  const [viewAsAttendee, setViewAsAttendee] = useState(false);
 
   const [users, setUsers] = useState<User[]>([
     { id: '1', name: 'Super Admin', email: 'admin@silverlink.com', role: UserRole.SUPER_ADMIN, isBlocked: false, joinedEvents: [] },
@@ -107,12 +110,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ 
-      currentUser, setCurrentUser, 
-      events, setEvents, 
-      articles, setArticles, 
+    <AppContext.Provider value={{
+      currentUser, setCurrentUser,
+      viewAsAttendee, setViewAsAttendee,
+      events, setEvents,
+      articles, setArticles,
       users, setUsers,
-      joinEvent, createEvent, blockEvent, blockUser, clapArticle 
+      joinEvent, createEvent, blockEvent, blockUser, clapArticle
     }}>
       {children}
     </AppContext.Provider>

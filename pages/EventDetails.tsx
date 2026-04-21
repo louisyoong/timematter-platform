@@ -1,310 +1,474 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { useApp } from "../store/AppContext";
+import { supabase, BACKEND_URL, TM_TOKEN_KEY } from "../services/supabase";
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Share2,
+  Check,
+  ArrowLeft,
+  Info,
+  AlertTriangle,
+  Car,
+  ShieldCheck,
+  Building2,
+} from "lucide-react";
 
-import React, { useState } from 'react';
-import { useApp } from '../store/AppContext';
-import { Calendar, MapPin, Users, Share2, Check, ArrowLeft, Info, AlertTriangle, Clock3, Ticket, Sparkles } from 'lucide-react';
+type ApiEvent = {
+  id: string;
+  title: string;
+  description: string;
+  banner_image_url?: string;
+  event_date: string;
+  location: string;
+  category: string;
+  status: string;
+  attendee_count: number;
+  is_joined: boolean;
+  parking_info?: string; // 'free' | 'paid' | 'none'
+  age_restriction?: string; // 'all' | 'restricted'
+  age_min?: number;
+  age_max?: number;
+  organizations?: { id: string; name: string; logo_url?: string };
+  organizer?: { id: string | number; name: string; profile_photo_url?: string };
+};
 
 const getEventIdFromHash = () => {
   const match = window.location.hash.match(/^#\/event\/(.+)$/);
-  return match ? decodeURIComponent(match[1]) : '';
+  return match ? decodeURIComponent(match[1]) : "";
 };
 
-const createSeededRandom = (seedText: string) => {
-  let seed = 0;
+const getToken = async (): Promise<string | null> => {
+  const jwt = localStorage.getItem(TM_TOKEN_KEY);
+  if (jwt) return jwt;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+};
 
-  for (let index = 0; index < seedText.length; index += 1) {
-    seed = (seed * 31 + seedText.charCodeAt(index)) >>> 0;
+const formatDate = (iso: string) => {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("en-MY", {
+      dateStyle: "full",
+      timeStyle: "short",
+    });
+  } catch {
+    return iso;
   }
-
-  return () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
 };
 
-const pickOne = <T,>(options: T[], random: () => number) => {
-  return options[Math.floor(random() * options.length)];
+const parkingLabel = (info?: string) => {
+  if (info === "free") return "Free parking available";
+  if (info === "paid") return "Paid parking nearby";
+  if (info === "none") return "No parking — use public transport";
+  return null;
 };
 
-const pickMany = (options: string[], count: number, random: () => number) => {
-  const pool = [...options];
-  const result: string[] = [];
-
-  while (pool.length > 0 && result.length < count) {
-    const index = Math.floor(random() * pool.length);
-    result.push(pool.splice(index, 1)[0]);
+const ageLabel = (restriction?: string, min?: number, max?: number) => {
+  if (restriction === "all") return "Open to all ages";
+  if (restriction === "restricted") {
+    if (min && max) return `Ages ${min}–${max} only`;
+    if (min) return `Ages ${min}+ only`;
+    if (max) return `Up to age ${max}`;
   }
-
-  return result;
-};
-
-const buildEventExtras = (event: {
-  id: string;
-  title: string;
-  category: string;
-  location: string;
-  description: string;
-  organizerName: string;
-}) => {
-  const random = createSeededRandom(`${event.id}-${event.title}`);
-  const durations = ['60 minutes', '75 minutes', '90 minutes', '2 hours'];
-  const audienceTypes = ['First-time attendees welcome', 'Best for active seniors', 'Caregivers are invited too', 'Small-group community session'];
-  const bringItems = [
-    'Bring a water bottle',
-    'Wear comfortable clothing',
-    'Bring your reading glasses if needed',
-    'Arrive 15 minutes early for check-in',
-    'Bring a light sweater for indoor comfort',
-    'Keep your phone on silent during the session',
-  ];
-  const highlights = [
-    'Guided warm-up and introductions',
-    'Light refreshments after the session',
-    'Friendly facilitator support throughout',
-    'Short break halfway through the event',
-    'Interactive activities designed for comfort',
-    'Photo corner for community memories',
-  ];
-  const hostTitles = [
-    'Community Wellness Lead',
-    'Senior Program Coordinator',
-    'Neighborhood Activity Host',
-    'Certified Volunteer Facilitator',
-  ];
-  const hostFocus = [
-    'creating safe, welcoming spaces for older adults',
-    'running accessible social programs for the local community',
-    'helping seniors stay active, connected, and confident',
-    'designing calm, inclusive activities with a gentle pace',
-  ];
-
-  return {
-    duration: pickOne(durations, random),
-    seatsLeft: Math.floor(random() * 18) + 6,
-    audienceNote: pickOne(audienceTypes, random),
-    checklist: pickMany(bringItems, 3, random),
-    highlights: pickMany(highlights, 3, random),
-    hostTitle: pickOne(hostTitles, random),
-    hostBio: `${event.organizerName} focuses on ${pickOne(hostFocus, random)}. This ${event.category.toLowerCase()} session at ${event.location} is structured to feel approachable, social, and easy to join.`,
-    extraDescription: `Expect a relaxed format with clear guidance, easy pacing, and time to talk with other attendees. Every part of ${event.title} is planned to help participants feel comfortable from arrival through closing.`,
-  };
+  return null;
 };
 
 const EventDetails: React.FC = () => {
-  const { events, currentUser, joinEvent } = useApp();
-  const [joinStatus, setJoinStatus] = useState<{ success: boolean; message: string } | null>(null);
-  const [isJoining, setIsJoining] = useState(false);
+  const { currentUser } = useApp();
+  const [event, setEvent] = useState<ApiEvent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [actionError, setActionError] = useState("");
+
   const id = getEventIdFromHash();
 
-  const event = events.find(e => e.id === id);
-  const eventExtras = event ? buildEventExtras(event) : null;
+  const fetchEvent = useCallback(async () => {
+    setLoading(true);
+    setNotFound(false);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/events/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.status === 404) {
+        setNotFound(true);
+        return;
+      }
+      if (!res.ok) {
+        setNotFound(true);
+        return;
+      }
+      const json = await res.json();
+      setEvent(json.event ?? json);
+    } catch {
+      setNotFound(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
-  if (!event) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
-        <h2 className="text-2xl font-bold text-gray-900">Event Not Found</h2>
-        <a href="#/find-events" className="mt-4 text-emerald-600 font-bold hover:underline">Return to browse</a>
-      </div>
-    );
-  }
-
-  if (event.isBlocked) {
-    return (
-       <div className="max-w-2xl mx-auto my-20 bg-white p-12 rounded-[2rem] shadow-xl border border-red-100 text-center">
-          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertTriangle size={32} />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">This Event is Unavailable</h2>
-          <p className="text-gray-600">This event has been removed or blocked by administrators due to community guideline violations.</p>
-          <a href="#/find-events" className="mt-8 inline-block px-8 py-3 bg-gray-100 text-gray-900 font-bold rounded-xl hover:bg-gray-200 transition-colors">
-            Back to Events
-          </a>
-       </div>
-    );
-  }
+  useEffect(() => {
+    if (id) fetchEvent();
+  }, [id, fetchEvent]);
 
   const handleJoin = async () => {
     if (!currentUser) {
-      window.location.hash = '/login';
+      window.location.hash = "/login";
       return;
     }
-    setIsJoining(true);
-    const result = await joinEvent(event.id);
-    setJoinStatus(result);
-    setIsJoining(false);
+    if (!event) return;
+    setJoining(true);
+    setActionError("");
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/events/${event.id}/join`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        setActionError(json.error || "Failed to join event.");
+      } else {
+        setEvent((prev) =>
+          prev
+            ? {
+                ...prev,
+                is_joined: true,
+                attendee_count: prev.attendee_count + 1,
+              }
+            : prev
+        );
+      }
+    } catch {
+      setActionError("Unable to connect to server.");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!event) return;
+    setJoining(true);
+    setActionError("");
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/events/${event.id}/join`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        setActionError(json.error || "Failed to leave event.");
+      } else {
+        setEvent((prev) =>
+          prev
+            ? {
+                ...prev,
+                is_joined: false,
+                attendee_count: Math.max(0, prev.attendee_count - 1),
+              }
+            : prev
+        );
+      }
+    } catch {
+      setActionError("Unable to connect to server.");
+    } finally {
+      setJoining(false);
+    }
   };
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    alert('Link copied to clipboard!');
+    alert("Link copied to clipboard!");
   };
+
+  if (loading) {
+    return (
+      <div className="pb-20">
+        <div className="h-[400px] md:h-[500px] bg-gray-200 animate-pulse" />
+        <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
+          <div className="lg:col-span-8 space-y-4">
+            <div className="h-8 bg-gray-200 rounded-xl animate-pulse w-3/4" />
+            <div className="h-4 bg-gray-100 rounded-xl animate-pulse" />
+            <div className="h-4 bg-gray-100 rounded-xl animate-pulse w-5/6" />
+          </div>
+          <div className="lg:col-span-4 h-64 bg-gray-200 rounded-3xl animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound || !event) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <AlertTriangle size={48} className="text-gray-300 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900">Event Not Found</h2>
+        <p className="mt-2 text-sm text-gray-500">
+          This event may have been removed or made private.
+        </p>
+        <a
+          href="#/find-events"
+          className="mt-6 text-emerald-600 font-bold hover:underline"
+        >
+          Return to browse
+        </a>
+      </div>
+    );
+  }
+
+  const parking = parkingLabel(event.parking_info);
+  const age = ageLabel(event.age_restriction, event.age_min, event.age_max);
+  const orgName =
+    event.organizations?.name ?? event.organizer?.name ?? "Organizer";
+  const organizerName = event.organizer?.name ?? orgName;
+  const organizerPhoto = event.organizer?.profile_photo_url;
 
   return (
     <div className="pb-20">
+      {/* Banner */}
       <div className="relative h-[400px] md:h-[500px]">
-        <img src={event.bannerUrl} alt={event.title} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30"></div>
-        <div className="absolute top-6 left-6 flex items-center gap-4">
-          <a href="#/find-events" className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-white/40 transition-all">
-            <ArrowLeft size={24} />
+        {event.banner_image_url ? (
+          <img
+            src={event.banner_image_url}
+            alt={event.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-emerald-50 flex items-center justify-center text-emerald-200 text-[10rem] font-black select-none">
+            {event.title.charAt(0)}
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+
+        <div className="absolute top-6 left-6">
+          <a
+            href="#/find-events"
+            className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-white/40 transition-all flex items-center justify-center"
+          >
+            <ArrowLeft size={22} />
           </a>
         </div>
+
         <div className="absolute bottom-12 left-0 right-0 max-w-7xl mx-auto px-4 md:px-8 text-white">
           <span className="bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block">
             {event.category}
           </span>
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-lg max-w-3xl">{event.title}</h1>
-          <div className="flex flex-wrap items-center gap-6 text-emerald-50">
-            <div className="flex items-center gap-2"><Users size={20} /> By {event.organizerName}</div>
-            <div className="flex items-center gap-2"><Users size={20} /> {event.joinedCount} people attending</div>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg max-w-3xl">
+            {event.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-6 text-emerald-50 text-sm">
+            <div className="flex items-center gap-2">
+              {event.organizations?.logo_url ? (
+                <img
+                  src={event.organizations.logo_url}
+                  alt="org"
+                  className="h-6 w-6 rounded-full object-cover"
+                />
+              ) : (
+                <Building2 size={18} />
+              )}
+              {orgName}
+            </div>
+            <div className="flex items-center gap-2">
+              <Users size={18} /> {event.attendee_count ?? 0} attending
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 mt-[-40px] relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* Main content */}
           <div className="lg:col-span-8 bg-white rounded-3xl shadow-xl border border-gray-100 p-8 md:p-12">
-            <div className="flex items-center gap-3 text-emerald-600 mb-6 font-bold uppercase tracking-widest text-sm">
-              <Info size={18} /> About this event
-            </div>
-            <div className="prose max-w-none text-gray-700 leading-relaxed text-lg">
-              {event.description.split('\n').map((para, i) => (
-                <p key={i} className="mb-4">{para}</p>
-              ))}
-              {eventExtras && <p className="mb-4">{eventExtras.extraDescription}</p>}
+            <div className="flex items-center gap-2 text-emerald-600 mb-6 font-bold uppercase tracking-widest text-sm">
+              <Info size={17} /> About this event
             </div>
 
-            {eventExtras && (
-              <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {eventExtras.highlights.map((highlight) => (
-                  <div key={highlight} className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 text-emerald-600">
-                        <Sparkles size={18} />
-                      </div>
-                      <p className="text-base text-gray-700 font-medium">{highlight}</p>
-                    </div>
+            <div className="text-gray-700 leading-relaxed text-base space-y-4">
+              {event.description.split("\n").map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+
+            {/* Event info pills */}
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {parking && (
+                <div className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
+                  <Car size={18} className="mt-0.5 text-emerald-500 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-0.5">
+                      Parking
+                    </p>
+                    <p className="text-sm font-semibold text-gray-700">
+                      {parking}
+                    </p>
                   </div>
-                ))}
+                </div>
+              )}
+              {age && (
+                <div className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
+                  <ShieldCheck
+                    size={18}
+                    className="mt-0.5 text-emerald-500 shrink-0"
+                  />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-0.5">
+                      Age Restriction
+                    </p>
+                    <p className="text-sm font-semibold text-gray-700">{age}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Organizer */}
+            <div className="mt-12 pt-10 border-t border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900 mb-5">
+                Event Organizer
+              </h3>
+              <div className="flex items-center gap-4 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                {organizerPhoto ? (
+                  <img
+                    src={organizerPhoto}
+                    alt="organizer"
+                    className="h-14 w-14 rounded-2xl object-cover border border-gray-200"
+                  />
+                ) : event.organizations?.logo_url ? (
+                  <img
+                    src={event.organizations.logo_url}
+                    alt="org"
+                    className="h-14 w-14 rounded-2xl object-cover border border-gray-200"
+                  />
+                ) : (
+                  <div className="h-14 w-14 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 text-xl font-bold">
+                    {organizerName.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <h4 className="font-bold text-gray-900">{organizerName}</h4>
+                  {orgName !== organizerName && (
+                    <p className="text-xs text-gray-400 mt-0.5">{orgName}</p>
+                  )}
+                  <p className="text-sm text-gray-400 mt-0.5">
+                    Verified Community Partner
+                  </p>
+                </div>
               </div>
-            )}
-            
-            <div className="mt-12 pt-12 border-t border-gray-100">
-               <h3 className="text-xl font-bold text-gray-900 mb-6">Event Host</h3>
-               <div className="flex items-center gap-4 p-6 bg-gray-50 rounded-2xl border border-gray-100">
-                 <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-2xl font-bold">
-                   {event.organizerName.charAt(0)}
-                 </div>
-                 <div>
-                    <h4 className="font-bold text-gray-900">{event.organizerName}</h4>
-                    <p className="text-sm text-gray-500">{eventExtras?.hostTitle || 'Verified Community Partner'}</p>
-                    {eventExtras && <p className="text-sm text-gray-600 mt-2 max-w-xl">{eventExtras.hostBio}</p>}
-                    <button className="text-emerald-600 text-sm font-bold mt-1 hover:underline">Contact Host</button>
-                 </div>
-               </div>
             </div>
           </div>
 
-          {/* Sidebar Info & Sticky Actions */}
-          <div className="lg:col-span-4 space-y-8">
-            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 sticky top-24">
-              <div className="space-y-6 mb-8">
+          {/* Sidebar */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 top-24">
+              {/* Date, location */}
+              <div className="space-y-5 mb-8">
                 <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <Calendar size={24} />
+                  <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
+                    <Calendar size={20} />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Date & Time</p>
-                    <p className="text-gray-900 font-bold">{event.dateTime}</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                      Date & Time
+                    </p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                      {formatDate(event.event_date)}
+                    </p>
                   </div>
                 </div>
-                <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <MapPin size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Location</p>
-                    <p className="text-gray-900 font-bold">{event.location}</p>
-                  </div>
-                </div>
-                {eventExtras && (
-                  <>
-                    <div className="flex gap-4">
-                      <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-                        <Clock3 size={24} />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Duration</p>
-                        <p className="text-gray-900 font-bold">{eventExtras.duration}</p>
-                        <p className="text-sm text-gray-500">{eventExtras.audienceNote}</p>
-                      </div>
+                {event.location && (
+                  <div className="flex gap-4">
+                    <div className="w-11 h-11 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center shrink-0">
+                      <MapPin size={20} />
                     </div>
-                    <div className="flex gap-4">
-                      <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-                        <Ticket size={24} />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Availability</p>
-                        <p className="text-gray-900 font-bold">{eventExtras.seatsLeft} seats left</p>
-                      </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                        Location
+                      </p>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                        {event.location}
+                      </p>
                     </div>
-                  </>
+                  </div>
                 )}
+                <div className="flex gap-4">
+                  <div className="w-11 h-11 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center shrink-0">
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                      Attendees
+                    </p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                      {event.attendee_count ?? 0} joined
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {joinStatus?.success ? (
-                <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl text-center mb-6">
-                  <Check className="text-emerald-600 mx-auto mb-2" size={32} />
-                  <p className="text-emerald-800 font-bold">{joinStatus.message}</p>
+              {/* Error */}
+              {actionError && (
+                <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {actionError}
+                </div>
+              )}
+
+              {/* Join / Leave button */}
+              {event.is_joined ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl py-4 text-emerald-700 font-bold text-sm">
+                    <Check size={18} /> You&apos;re attending
+                  </div>
+                  <button
+                    onClick={handleLeave}
+                    disabled={joining}
+                    className="w-full py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-60"
+                  >
+                    {joining ? "Processing…" : "Leave event"}
+                  </button>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={handleJoin}
-                  disabled={isJoining || currentUser?.joinedEvents.includes(event.id)}
-                  className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-2 ${
-                    currentUser?.joinedEvents.includes(event.id) 
-                    ? 'bg-gray-100 text-gray-400 cursor-default'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200'
-                  }`}
+                  disabled={joining}
+                  className="w-full py-4 rounded-2xl font-bold text-lg bg-emerald-600 text-white shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isJoining ? 'Processing...' : currentUser?.joinedEvents.includes(event.id) ? 'Joined' : 'Join for Free'}
+                  {joining ? "Processing…" : "Join for Free"}
                 </button>
               )}
 
               {!currentUser && (
-                <p className="text-center text-sm text-gray-400 mt-4">
-                  Login required to secure your ticket.
+                <p className="text-center text-xs text-gray-400 mt-3">
+                  <a href="#/login" className="underline">
+                    Sign in
+                  </a>{" "}
+                  to join this event.
                 </p>
               )}
 
-              <button 
+              {/* Share */}
+              <button
                 onClick={handleShare}
-                className="w-full mt-4 flex items-center justify-center gap-2 py-4 text-emerald-600 font-bold hover:bg-emerald-50 rounded-2xl border-2 border-emerald-600 transition-colors"
+                className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 text-emerald-600 font-bold hover:bg-emerald-50 rounded-2xl border-2 border-emerald-600 transition-colors text-sm"
               >
-                <Share2 size={20} /> Share Event
+                <Share2 size={18} /> Share Event
               </button>
-
-              {eventExtras && (
-                <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50 p-5">
-                  <h4 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3">What to Know</h4>
-                  <div className="space-y-2">
-                    {eventExtras.checklist.map((item) => (
-                      <div key={item} className="flex items-start gap-2 text-sm text-gray-600">
-                        <Check size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 text-white">
-              <h4 className="text-lg font-bold mb-4">Safety First</h4>
+            {/* Safety card */}
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-7 text-white">
+              <h4 className="text-base font-bold mb-3">Safety First</h4>
               <p className="text-sm text-gray-400 leading-relaxed mb-4">
-                All SilverLink events follow strict community guidelines. If you feel uncomfortable or notice something wrong, report the event immediately.
+                All TimeMatter events follow strict community guidelines. If you
+                feel uncomfortable or notice something wrong, please report it.
               </p>
-              <button className="text-red-400 text-sm font-bold hover:underline">Report Event</button>
+              <button className="text-red-400 text-sm font-bold hover:underline">
+                Report Event
+              </button>
             </div>
           </div>
         </div>

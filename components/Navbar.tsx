@@ -14,10 +14,12 @@ import {
 } from "lucide-react";
 import { useApp } from "../store/AppContext";
 import { UserRole } from "../types";
+
 import { supabase, TM_TOKEN_KEY } from "../services/supabase";
 
 const Navbar: React.FC = () => {
-  const { currentUser, setCurrentUser } = useApp();
+  const { currentUser, setCurrentUser, viewAsAttendee, setViewAsAttendee } =
+    useApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,6 +48,24 @@ const Navbar: React.FC = () => {
     window.location.hash = "/login";
   };
 
+  const isOrganizer =
+    currentUser?.role === UserRole.ORGANIZER ||
+    currentUser?.role === UserRole.ADMIN ||
+    currentUser?.role === UserRole.SUPER_ADMIN;
+
+  const handleSwitchToOrg = () => {
+    setViewAsAttendee(false);
+    setIsUserMenuOpen(false);
+    setIsMobileMenuOpen(false);
+    window.location.hash = "/create-event";
+  };
+
+  const handleSwitchToAttendee = () => {
+    setViewAsAttendee(true);
+    setIsUserMenuOpen(false);
+    setIsMobileMenuOpen(false);
+  };
+
   const NavLinks = () => (
     <>
       <a href="#/" className="hover:text-emerald-600 font-medium">
@@ -54,22 +74,19 @@ const Navbar: React.FC = () => {
       <a href="#/find-events" className="hover:text-emerald-600 font-medium">
         Find Events
       </a>
-      {(currentUser?.role === UserRole.ORGANIZER ||
-        currentUser?.role === UserRole.ADMIN ||
-        currentUser?.role === UserRole.SUPER_ADMIN) && (
+
+      <a href="#/articles" className="hover:text-emerald-600 font-medium">
+        Articles
+      </a>
+
+      {isOrganizer && !viewAsAttendee && (
         <a
           href="#/create-event"
-          className="hover:text-emerald-600 font-medium flex items-center gap-1 text-emerald-700"
+          className="hover:text-emerald-500 font-medium flex items-center gap-1 text-emerald-700 bg-emerald-100 p-2 rounded-lg"
         >
           <PlusCircle size={18} /> Create Event
         </a>
       )}
-      <a href="#/articles" className="hover:text-emerald-600 font-medium">
-        Articles
-      </a>
-      <a href="#/help" className="hover:text-emerald-600 font-medium">
-        Help Center
-      </a>
       {currentUser?.role === UserRole.ADMIN && (
         <a href="#/admin" className="font-bold text-red-600">
           All Users
@@ -159,17 +176,42 @@ const Navbar: React.FC = () => {
 
                       {/* Menu items */}
                       <div className="py-1.5">
-                        <a
-                          href="#/create-event"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
-                        >
-                          <Building2
-                            size={16}
-                            className="shrink-0 text-gray-400"
-                          />
-                          Switch to Organization
-                        </a>
+                        {isOrganizer && !viewAsAttendee ? (
+                          <button
+                            onClick={handleSwitchToAttendee}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                          >
+                            <UserIcon
+                              size={16}
+                              className="shrink-0 text-gray-400"
+                            />
+                            Switch to Attendance
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleSwitchToOrg}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                          >
+                            <Building2
+                              size={16}
+                              className="shrink-0 text-gray-400"
+                            />
+                            Switch to Organization
+                          </button>
+                        )}
+                        {isOrganizer && !viewAsAttendee && (
+                          <a
+                            href="#/organizer-events"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                          >
+                            <PlusCircle
+                              size={16}
+                              className="shrink-0 text-gray-400"
+                            />
+                            All Events
+                          </a>
+                        )}
                         <a
                           href="#/tickets"
                           onClick={() => setIsUserMenuOpen(false)}
@@ -252,13 +294,32 @@ const Navbar: React.FC = () => {
           <NavLinks />
           {currentUser && (
             <div className="border-t border-gray-100 pt-3 flex flex-col gap-1">
-              <a
-                href="#/create-event"
-                className="flex items-center gap-3 px-2 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-emerald-50"
-              >
-                <Building2 size={16} className="text-gray-400" /> Switch to
-                Organization
-              </a>
+              {isOrganizer && !viewAsAttendee ? (
+                <button
+                  onClick={handleSwitchToAttendee}
+                  className="flex items-center gap-3 px-2 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-emerald-50"
+                >
+                  <UserIcon size={16} className="text-gray-400" /> Switch to
+                  Attendance
+                </button>
+              ) : (
+                <button
+                  onClick={handleSwitchToOrg}
+                  className="flex items-center gap-3 px-2 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-emerald-50"
+                >
+                  <Building2 size={16} className="text-gray-400" /> Switch to
+                  Organization
+                </button>
+              )}
+              {isOrganizer && !viewAsAttendee && (
+                <a
+                  href="#/organizer-events"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-2 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-emerald-50"
+                >
+                  <PlusCircle size={16} className="text-gray-400" /> All Events
+                </a>
+              )}
               <a
                 href="#/tickets"
                 className="flex items-center gap-3 px-2 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-emerald-50"
