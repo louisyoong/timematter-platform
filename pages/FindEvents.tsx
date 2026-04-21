@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, MapPin, Search, Users, X } from 'lucide-react';
-import { supabase, BACKEND_URL, TM_TOKEN_KEY } from '../services/supabase';
+import React, { useState, useEffect, useCallback } from "react";
+import { Calendar, MapPin, Search, Users, X } from "lucide-react";
+import { supabase, BACKEND_URL, TM_TOKEN_KEY } from "../services/supabase";
 
 type ApiEvent = {
   id: string;
@@ -16,14 +16,21 @@ type ApiEvent = {
   organizations?: { id: string; name: string; logo_url?: string };
 };
 
-const CATEGORIES = ['All', 'Health', 'Social', 'Sport', 'Creative', 'Education'];
+const CATEGORIES = [
+  "All",
+  "Health",
+  "Social",
+  "Sport",
+  "Creative",
+  "Education",
+];
 
 const formatDate = (iso: string) => {
-  if (!iso) return '';
+  if (!iso) return "";
   try {
-    return new Date(iso).toLocaleString('en-MY', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
+    return new Date(iso).toLocaleString("en-MY", {
+      dateStyle: "medium",
+      timeStyle: "short",
     });
   } catch {
     return iso;
@@ -33,47 +40,54 @@ const formatDate = (iso: string) => {
 const getToken = async (): Promise<string | null> => {
   const jwt = localStorage.getItem(TM_TOKEN_KEY);
   if (jwt) return jwt;
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   return session?.access_token ?? null;
 };
 
 const FindEvents: React.FC = () => {
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filterCategory, setFilterCategory] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState("");
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchEvents = useCallback(async (category: string) => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const token = await getToken();
-      const params = new URLSearchParams({ limit: '100', offset: '0' });
-      if (category !== 'All') params.set('category', category.toLowerCase());
+      const params = new URLSearchParams({ limit: "100", offset: "0" });
+      if (category !== "All") params.set("category", category.toLowerCase());
 
       const res = await fetch(`${BACKEND_URL}/api/events?${params}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) { setError('Failed to load events.'); return; }
+      if (!res.ok) {
+        setError("Failed to load events.");
+        return;
+      }
       const json = await res.json();
       setEvents(json.events ?? []);
     } catch {
-      setError('Unable to connect to the server.');
+      setError("Unable to connect to the server.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchEvents(filterCategory); }, [filterCategory, fetchEvents]);
+  useEffect(() => {
+    fetchEvents(filterCategory);
+  }, [filterCategory, fetchEvents]);
 
   const filtered = events.filter((e) => {
     if (!searchTerm) return true;
     const q = searchTerm.toLowerCase();
     return (
       e.title.toLowerCase().includes(q) ||
-      (e.location ?? '').toLowerCase().includes(q) ||
-      (e.organizations?.name ?? '').toLowerCase().includes(q)
+      (e.location ?? "").toLowerCase().includes(q) ||
+      (e.organizations?.name ?? "").toLowerCase().includes(q)
     );
   });
 
@@ -82,13 +96,15 @@ const FindEvents: React.FC = () => {
       {/* Hero banner */}
       <div className="relative h-64 bg-emerald-900 overflow-hidden">
         <img
-          src="https://picsum.photos/id/1020/1600/400"
-          className="w-full h-full object-cover opacity-50"
+          src="/images/event-banner.jpg"
+          className="w-full h-full object-cover opacity-80"
           alt="banner"
         />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4 text-center">
           <h1 className="text-4xl font-bold mb-2">Find Events Near You</h1>
-          <p className="text-emerald-100">Discover upcoming events in your community.</p>
+          <p className="text-emerald-100">
+            Discover upcoming events in your community.
+          </p>
         </div>
       </div>
 
@@ -97,7 +113,10 @@ const FindEvents: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-xl p-5 border border-emerald-50">
           <div className="flex flex-col gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={18}
+              />
               <input
                 type="text"
                 placeholder="Search by title, venue, or organizer…"
@@ -113,8 +132,8 @@ const FindEvents: React.FC = () => {
                   onClick={() => setFilterCategory(cat)}
                   className={`px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
                     filterCategory === cat
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
                   {cat}
@@ -128,11 +147,18 @@ const FindEvents: React.FC = () => {
         <div className="mt-10">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
-              {loading ? 'Loading…' : `${filtered.length} ${filtered.length === 1 ? 'Event' : 'Events'} found`}
+              {loading
+                ? "Loading…"
+                : `${filtered.length} ${
+                    filtered.length === 1 ? "Event" : "Events"
+                  } found`}
             </h2>
-            {(searchTerm || filterCategory !== 'All') && (
+            {(searchTerm || filterCategory !== "All") && (
               <button
-                onClick={() => { setSearchTerm(''); setFilterCategory('All'); }}
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilterCategory("All");
+                }}
                 className="flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:underline"
               >
                 <X size={15} /> Clear filters
@@ -149,14 +175,21 @@ const FindEvents: React.FC = () => {
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-80 rounded-2xl bg-gray-100 animate-pulse" />
+                <div
+                  key={i}
+                  className="h-80 rounded-2xl bg-gray-100 animate-pulse"
+                />
               ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="py-20 text-center rounded-3xl border border-dashed border-gray-300 bg-white">
               <Search className="mx-auto mb-4 text-gray-300" size={48} />
-              <h3 className="text-xl font-semibold text-gray-900">No events found</h3>
-              <p className="mt-2 text-sm text-gray-500">Try adjusting your filters or search terms.</p>
+              <h3 className="text-xl font-semibold text-gray-900">
+                No events found
+              </h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Try adjusting your filters or search terms.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -191,12 +224,18 @@ const FindEvents: React.FC = () => {
                     </h3>
                     <div className="mb-4 flex-1 space-y-2">
                       <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Calendar size={14} className="shrink-0 text-emerald-500" />
+                        <Calendar
+                          size={14}
+                          className="shrink-0 text-emerald-500"
+                        />
                         {formatDate(event.event_date)}
                       </div>
                       {event.location && (
                         <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <MapPin size={14} className="shrink-0 text-emerald-500" />
+                          <MapPin
+                            size={14}
+                            className="shrink-0 text-emerald-500"
+                          />
                           <span className="truncate">{event.location}</span>
                         </div>
                       )}
@@ -212,7 +251,9 @@ const FindEvents: React.FC = () => {
                         ) : (
                           <div className="h-5 w-5 rounded-full bg-emerald-100" />
                         )}
-                        <span className="truncate max-w-[100px]">{event.organizations?.name ?? 'Organizer'}</span>
+                        <span className="truncate max-w-[100px]">
+                          {event.organizations?.name ?? "Organizer"}
+                        </span>
                       </div>
                       <span className="flex items-center gap-1">
                         <Users size={12} className="text-emerald-500" />

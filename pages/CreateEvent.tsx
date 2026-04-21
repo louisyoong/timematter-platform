@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../store/AppContext';
 import { UserRole } from '../types';
 import { supabase, BACKEND_URL, TM_TOKEN_KEY } from '../services/supabase';
-import { ImagePlus, CalendarClock, MapPin, AlignLeft, ArrowRight, CheckCircle } from 'lucide-react';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { ImagePlus, CalendarClock, MapPin, AlignLeft, ArrowRight, CheckCircle, PencilLine } from 'lucide-react';
 
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -21,7 +19,17 @@ const getToken = async (): Promise<string | null> => {
   return session?.access_token ?? null;
 };
 
-// ─── Shared UI ────────────────────────────────────────────────────────────────
+const getEditId = (): string | null => {
+  const search = window.location.hash.split('?')[1] ?? '';
+  return new URLSearchParams(search).get('id');
+};
+
+const toDatetimeLocal = (iso: string): string => {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toISOString().slice(0, 16);
+  } catch { return ''; }
+};
 
 const inputCls = 'w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all text-sm text-gray-700';
 
@@ -49,12 +57,13 @@ const EVENT_CATEGORIES: { value: EventCategory; label: string }[] = [
   { value: 'education', label: 'Education' },
 ];
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 const CreateEvent: React.FC = () => {
   const { currentUser, setCurrentUser } = useApp();
 
-  // Gate state — USER gets auto-promoted to ORGANIZER
+  const editId = getEditId();
+  const isEditMode = Boolean(editId);
+
+  // Gate state
   const [gateLoading, setGateLoading] = useState(false);
   const [gateError, setGateError] = useState('');
   const [ready, setReady] = useState(false);
@@ -74,10 +83,11 @@ const CreateEvent: React.FC = () => {
 
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [createdId, setCreatedId] = useState<string | null>(null);
-  const [createdStatus, setCreatedStatus] = useState<'draft' | 'published'>('draft');
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [savedStatus, setSavedStatus] = useState<'draft' | 'published'>('draft');
+  const [prefillLoading, setPrefillLoading] = useState(false);
 
-  // ── Gate: ensure user is ORGANIZER or ADMIN before showing the form ──────────
+  // ── Gate: ensure ORGANIZER / ADMIN, auto-promote USER ────────────────────────
   useEffect(() => {
     const isAuthorized =
       currentUser?.role === UserRole.ORGANIZER ||
@@ -86,7 +96,6 @@ const CreateEvent: React.FC = () => {
 
     if (isAuthorized) { setReady(true); return; }
 
-    // USER → auto-register as organizer using their name
     if (currentUser?.role === UserRole.USER) {
       (async () => {
         setGateLoading(true);
@@ -101,7 +110,6 @@ const CreateEvent: React.FC = () => {
             body: JSON.stringify({ name: currentUser.name }),
           });
           const json = await res.json();
-
           if (!res.ok) { setGateError(json.error || 'Failed to register as organizer.'); return; }
 
           setCurrentUser({ ...currentUser, role: UserRole.ORGANIZER });
@@ -115,29 +123,75 @@ const CreateEvent: React.FC = () => {
     }
   }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Success screen ────────────────────────────────────────────────────────────
-  if (createdId) {
+  // ── Pre-fill form when editing a draft ──────────────────────────────────────
+  useEffect(() => {
+    if (!ready || !editId) return;
+    (async () => {
+      setPrefillLoading(true);
+      try {
+        const token = await getToken();
+        const res = await fetch(`${BACKEND_URL}/api/events/${editId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const e = json.event ?? json;
+
+        setTitle(e.title ?? '');
+        setCategory((e.category as EventCategory) ?? '');
+        setEventDate(toDatetimeLocal(e.event_date ?? ''));
+        setLocation(e.location ?? '');
+        setDescription(e.description ?? '');
+        setParkingInfo((e.parking_info as ParkingOption) ?? 'free');
+        setAgeRestriction((e.age_restriction as AgeRestriction) ?? 'all');
+        setAgeMin(e.age_min ? String(e.age_min) : '');
+        setAgeMax(e.age_max ? String(e.age_max) : '');
+        if (e.banner_image_url) setBannerPreview(e.banner_image_url);
+      } finally {
+        setPrefillLoading(false);
+      }
+    })();
+  }, [ready, editId]);
+
+  // ── Success screen ───────────────────────────────────────────────────────────
+  if (savedId) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
           <CheckCircle className="text-emerald-600" size={40} />
         </div>
         <h2 className="text-3xl font-bold text-gray-900">
-          {createdStatus === 'published' ? 'Event Published!' : 'Draft Saved!'}
+          {savedStatus === 'published' ? 'Event Published!' : 'Draft Saved!'}
         </h2>
-        <p className="text-sm text-gray-500">Your event has been created successfully.</p>
+        <p className="text-sm text-gray-500">
+          {savedStatus === 'published'
+            ? 'Your event is now live and visible to everyone.'
+            : 'Your draft has been saved. You can continue editing it anytime.'}
+        </p>
         <div className="flex gap-3 mt-2 flex-wrap justify-center">
-          <a
-            href={`#/events/${createdId}`}
-            className="rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all"
-          >
-            View Event
-          </a>
+          {savedStatus === 'published' ? (
+            <a
+              href={`#/event/${savedId}`}
+              className="rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all"
+            >
+              View Event
+            </a>
+          ) : (
+            <a
+              href={`#/create-event?id=${savedId}`}
+              onClick={() => setSavedId(null)}
+              className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all"
+            >
+              <PencilLine size={16} /> Continue Editing
+            </a>
+          )}
           <button
             onClick={() => {
-              setCreatedId(null);
+              setSavedId(null);
               setTitle(''); setCategory(''); setDescription(''); setLocation('');
               setEventDate(''); setBannerFile(null); setBannerPreview('');
+              setParkingInfo('free'); setAgeRestriction('all'); setAgeMin(''); setAgeMax('');
+              window.location.hash = '/create-event';
             }}
             className="rounded-2xl border border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
           >
@@ -148,7 +202,6 @@ const CreateEvent: React.FC = () => {
     );
   }
 
-  // ── Gate loading / error ──────────────────────────────────────────────────────
   if (gateLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm text-gray-400">
@@ -171,9 +224,15 @@ const CreateEvent: React.FC = () => {
     );
   }
 
-  if (!ready) return null;
+  if (!ready || prefillLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-sm text-gray-400">
+        {prefillLoading ? 'Loading draft…' : null}
+      </div>
+    );
+  }
 
-  // ── Submit ────────────────────────────────────────────────────────────────────
+  // ── Submit (POST for new, PATCH for edit) ────────────────────────────────────
   const handleSubmit = async (status: 'draft' | 'published') => {
     setError('');
     setSubmitting(true);
@@ -182,11 +241,11 @@ const CreateEvent: React.FC = () => {
       const token = await getToken();
       if (!token) { setError('Session expired.'); return; }
 
-      if (!title.trim()) { setError('Event title is required.'); return; }
-      if (!category) { setError('Category is required.'); return; }
-      if (!eventDate) { setError('Event date is required.'); return; }
-
-      const bannerImage = bannerFile ? await fileToBase64(bannerFile) : undefined;
+      if (status === 'published') {
+        if (!title.trim()) { setError('Event title is required.'); setSubmitting(false); return; }
+        if (!category) { setError('Category is required.'); setSubmitting(false); return; }
+        if (!eventDate) { setError('Event date is required.'); setSubmitting(false); return; }
+      }
 
       const body: Record<string, unknown> = {
         title: title.trim(),
@@ -199,23 +258,28 @@ const CreateEvent: React.FC = () => {
         status,
       };
 
-      if (bannerImage) body.bannerImage = bannerImage;
+      if (bannerFile) body.bannerImage = await fileToBase64(bannerFile);
       if (ageRestriction === 'restricted') {
         if (ageMin) body.ageMin = Number(ageMin);
         if (ageMax) body.ageMax = Number(ageMax);
       }
 
-      const res = await fetch(`${BACKEND_URL}/api/events`, {
-        method: 'POST',
+      const url = isEditMode
+        ? `${BACKEND_URL}/api/events/${editId}`
+        : `${BACKEND_URL}/api/events`;
+      const method = isEditMode ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       });
       const json = await res.json();
 
-      if (!res.ok) { setError(json.error || 'Failed to create event.'); return; }
+      if (!res.ok) { setError(json.error || 'Failed to save event.'); return; }
 
-      setCreatedStatus(status);
-      setCreatedId(json.event?.id ?? 'new');
+      setSavedStatus(status);
+      setSavedId(String(json.event?.id ?? editId ?? 'new'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -223,14 +287,25 @@ const CreateEvent: React.FC = () => {
     }
   };
 
-  // ─── Render form ──────────────────────────────────────────────────────────────
+  // ─── Render form ─────────────────────────────────────────────────────────────
   return (
     <div className="bg-[linear-gradient(180deg,#f4fbf7_0%,#ffffff_100%)] px-4 py-10 md:py-14">
       <div className="mx-auto w-full max-w-2xl space-y-5">
 
-        <div className="mb-2">
-          <h1 className="text-3xl font-bold text-gray-900">Create Event</h1>
-          <p className="mt-1 text-sm text-gray-500">Fill in the details to set up your event.</p>
+        <div className="mb-2 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isEditMode ? 'Edit Event' : 'Create Event'}
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              {isEditMode ? 'Update your draft and publish when ready.' : 'Fill in the details to set up your event.'}
+            </p>
+          </div>
+          {isEditMode && (
+            <span className="shrink-0 mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
+              <PencilLine size={12} /> Draft
+            </span>
+          )}
         </div>
 
         {error && (
@@ -277,12 +352,10 @@ const CreateEvent: React.FC = () => {
 
         {/* ── 2. Core details ── */}
         <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm space-y-5">
-          {/* Title */}
           <div>
             <Label required>Event Title</Label>
             <input
               type="text"
-              required
               placeholder="Enter event title"
               className={inputCls}
               value={title}
@@ -293,21 +366,17 @@ const CreateEvent: React.FC = () => {
           <div>
             <Label required>Category</Label>
             <select
-              required
               className={inputCls}
               value={category}
               onChange={(e) => setCategory(e.target.value as EventCategory)}
             >
               <option value="">Select category</option>
-              {EVENT_CATEGORIES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+              {EVENT_CATEGORIES.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
 
-          {/* Date + Location */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label required>Date & Time</Label>
@@ -315,7 +384,6 @@ const CreateEvent: React.FC = () => {
                 <CalendarClock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={17} />
                 <input
                   type="datetime-local"
-                  required
                   className={`${inputCls} pl-11`}
                   value={eventDate}
                   onChange={(e) => setEventDate(e.target.value)}
@@ -337,7 +405,6 @@ const CreateEvent: React.FC = () => {
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <Label>Event Information Overview</Label>
             <div className="relative">
@@ -401,25 +468,13 @@ const CreateEvent: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>From</Label>
-                <input
-                  type="number"
-                  min="0" max="120"
-                  placeholder="e.g. 18"
-                  className={inputCls}
-                  value={ageMin}
-                  onChange={(e) => setAgeMin(e.target.value)}
-                />
+                <input type="number" min="0" max="120" placeholder="e.g. 18"
+                  className={inputCls} value={ageMin} onChange={(e) => setAgeMin(e.target.value)} />
               </div>
               <div>
                 <Label>To</Label>
-                <input
-                  type="number"
-                  min="0" max="120"
-                  placeholder="e.g. 60"
-                  className={inputCls}
-                  value={ageMax}
-                  onChange={(e) => setAgeMax(e.target.value)}
-                />
+                <input type="number" min="0" max="120" placeholder="e.g. 60"
+                  className={inputCls} value={ageMax} onChange={(e) => setAgeMax(e.target.value)} />
               </div>
               {ageMin && ageMax && (
                 <p className="col-span-2 px-1 text-xs font-semibold text-emerald-600">

@@ -113,7 +113,7 @@ const AppContent: React.FC = () => {
 
     if (hash === '/' || hash === '') return <Home />;
     if (hash === '/find-events') return <FindEvents />;
-    if (hash === '/create-event') return <CreateEvent />;
+    if (hash.startsWith('/create-event')) return <CreateEvent />;
     if (hash === '/articles') return <Articles />;
     if (hash === '/help') return <HelpCenter />;
     if (hash === '/login') return <Login />;

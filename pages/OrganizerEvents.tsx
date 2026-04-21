@@ -73,22 +73,18 @@ const OrganizerEvents: React.FC = () => {
     setError('');
     try {
       const token = await getToken();
-      const res = await fetch(`${BACKEND_URL}/api/events?limit=200&offset=0`, {
+      const res = await fetch(`${BACKEND_URL}/api/events/mine`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) { setError('Failed to load events.'); return; }
       const json = await res.json();
-      const all: OrgEvent[] = json.events ?? [];
-      const mine = all.filter(
-        (e) => e.organizer && String(e.organizer.id) === String(currentUser?.id)
-      );
-      setEvents(mine);
+      setEvents(json.events ?? []);
     } catch {
       setError('Unable to connect to the server.');
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.id]);
+  }, []);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -273,7 +269,13 @@ const OrganizerEvents: React.FC = () => {
           {events.map((event) => (
             <button
               key={event.id}
-              onClick={() => openAttendees(event)}
+              onClick={() => {
+                if (event.status === 'draft') {
+                  window.location.hash = `/create-event?id=${event.id}`;
+                } else {
+                  openAttendees(event);
+                }
+              }}
               className="w-full flex gap-4 items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-100 transition-all text-left group"
             >
               {event.banner_image_url ? (
