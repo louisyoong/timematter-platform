@@ -11,6 +11,8 @@ import {
   Ticket,
   Settings,
   ChevronDown,
+  Users,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { useApp } from "../store/AppContext";
 import { UserRole } from "../types";
@@ -85,11 +87,6 @@ const Navbar: React.FC = () => {
           className="hover:text-emerald-500 font-medium flex items-center gap-1 text-emerald-700 bg-emerald-100 p-2 rounded-lg"
         >
           <PlusCircle size={18} /> Create Event
-        </a>
-      )}
-      {currentUser?.role === UserRole.ADMIN && (
-        <a href="#/admin" className="font-bold text-red-600">
-          All Users
         </a>
       )}
     </>
@@ -209,7 +206,7 @@ const Navbar: React.FC = () => {
                               size={16}
                               className="shrink-0 text-gray-400"
                             />
-                            All Events
+                            All My Events
                           </a>
                         )}
                         <a
@@ -235,6 +232,37 @@ const Navbar: React.FC = () => {
                           Account Settings
                         </a>
                       </div>
+
+                      {/* Management (Admin only) */}
+                      {currentUser?.role === UserRole.ADMIN && (
+                        <div className="border-t border-gray-50 py-1.5">
+                          <p className="px-4 pt-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                            Management
+                          </p>
+                          <a
+                            href="#/admin"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          >
+                            <Users
+                              size={16}
+                              className="shrink-0 text-gray-400"
+                            />
+                            All Users
+                          </a>
+                          <a
+                            href="#/admin-events"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          >
+                            <CalendarIcon
+                              size={16}
+                              className="shrink-0 text-gray-400"
+                            />
+                            All Events
+                          </a>
+                        </div>
+                      )}
 
                       {/* Sign out */}
                       <div className="border-t border-gray-50 py-1.5">
@@ -333,6 +361,28 @@ const Navbar: React.FC = () => {
                 <Settings size={16} className="text-gray-400" /> Account
                 Settings
               </a>
+              {currentUser?.role === UserRole.ADMIN && (
+                <>
+                  <p className="px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    Management
+                  </p>
+                  <a
+                    href="#/admin"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-2 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Users size={16} className="text-gray-400" /> All Users
+                  </a>
+                  <a
+                    href="#/admin-events"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-2 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-red-50 hover:text-red-600"
+                  >
+                    <CalendarIcon size={16} className="text-gray-400" /> All
+                    Events
+                  </a>
+                </>
+              )}
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-3 px-2 py-2.5 text-sm text-red-500 rounded-xl hover:bg-red-50"

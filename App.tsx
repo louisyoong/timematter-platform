@@ -19,6 +19,7 @@ import AccountSettings from './pages/AccountSettings';
 import SwitchOrganization from './pages/SwitchOrganization';
 import OrganizerEvents from './pages/OrganizerEvents';
 import MyTickets from './pages/MyTickets';
+import AdminEvents from './pages/AdminEvents';
 import { supabase, BACKEND_URL, TM_TOKEN_KEY } from './services/supabase';
 import { UserRole } from './types';
 
@@ -126,6 +127,7 @@ const AppContent: React.FC = () => {
     if (hash === '/switch-organization') return <SwitchOrganization />;
     if (hash === '/organizer-events') return <OrganizerEvents />;
     if (hash === '/tickets') return <MyTickets />;
+    if (hash === '/admin-events') return <AdminEvents />;
     if (hash.startsWith('/event/')) return <EventDetails />;
 
     const eventMatch = hash.match(/\/event\/(.+)/);
