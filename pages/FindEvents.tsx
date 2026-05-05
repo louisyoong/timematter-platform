@@ -46,6 +46,75 @@ const getToken = async (): Promise<string | null> => {
   return session?.access_token ?? null;
 };
 
+const EventCard: React.FC<{ event: ApiEvent; isPast?: boolean }> = ({
+  event,
+  isPast,
+}) => (
+  <a
+    href={`#/event/${event.id}`}
+    className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl"
+  >
+    <div className="relative h-48 bg-gray-100 overflow-hidden">
+      {event.banner_image_url ? (
+        <img
+          src={event.banner_image_url}
+          alt={event.title}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center bg-emerald-50 text-emerald-300 text-5xl font-black">
+          {event.title.charAt(0)}
+        </div>
+      )}
+      <span className="absolute left-3 top-3 rounded-full bg-emerald-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">
+        {event.category}
+      </span>
+      {isPast && (
+        <span className="absolute right-3 top-3 rounded-full bg-gray-700/80 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">
+          Ended
+        </span>
+      )}
+    </div>
+    <div className="flex flex-1 flex-col p-5">
+      <h3 className="mb-3 line-clamp-2 text-lg font-bold text-gray-900 min-h-[3.25rem]">
+        {event.title}
+      </h3>
+      <div className="mb-4 flex-1 space-y-2">
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Calendar size={14} className="shrink-0 text-emerald-500" />
+          {formatDate(event.event_date)}
+        </div>
+        {event.location && (
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <MapPin size={14} className="shrink-0 text-emerald-500" />
+            <span className="truncate">{event.location}</span>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between border-t border-gray-50 pt-3 text-xs text-gray-400">
+        <div className="flex items-center gap-1.5">
+          {event.organizations?.logo_url ? (
+            <img
+              src={event.organizations.logo_url}
+              alt="org"
+              className="h-5 w-5 rounded-full object-cover"
+            />
+          ) : (
+            <div className="h-5 w-5 rounded-full bg-emerald-100" />
+          )}
+          <span className="truncate max-w-[100px]">
+            {event.organizations?.name ?? "Organizer"}
+          </span>
+        </div>
+        <span className="flex items-center gap-1">
+          <Users size={12} className="text-emerald-500" />
+          {event.attendee_count ?? 0} joined
+        </span>
+      </div>
+    </div>
+  </a>
+);
+
 const FindEvents: React.FC = () => {
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +150,8 @@ const FindEvents: React.FC = () => {
     fetchEvents(filterCategory);
   }, [filterCategory, fetchEvents]);
 
+  const now = new Date();
+
   const filtered = events.filter((e) => {
     if (!searchTerm) return true;
     const q = searchTerm.toLowerCase();
@@ -90,6 +161,20 @@ const FindEvents: React.FC = () => {
       (e.organizations?.name ?? "").toLowerCase().includes(q)
     );
   });
+
+  const currentEvents = filtered
+    .filter((e) => new Date(e.event_date) >= now)
+    .sort(
+      (a, b) =>
+        new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+    );
+
+  const pastEvents = filtered
+    .filter((e) => new Date(e.event_date) < now)
+    .sort(
+      (a, b) =>
+        new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
+    );
 
   return (
     <div className="pb-20">
@@ -132,7 +217,7 @@ const FindEvents: React.FC = () => {
                   onClick={() => setFilterCategory(cat)}
                   className={`px-5 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
                     filterCategory === cat
-                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200"
+                      ? "bg-emerald-600 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
@@ -145,15 +230,8 @@ const FindEvents: React.FC = () => {
 
         {/* Results */}
         <div className="mt-10">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {loading
-                ? "Loading…"
-                : `${filtered.length} ${
-                    filtered.length === 1 ? "Event" : "Events"
-                  } found`}
-            </h2>
-            {(searchTerm || filterCategory !== "All") && (
+          {(searchTerm || filterCategory !== "All") && (
+            <div className="flex justify-end mb-6">
               <button
                 onClick={() => {
                   setSearchTerm("");
@@ -163,8 +241,8 @@ const FindEvents: React.FC = () => {
               >
                 <X size={15} /> Clear filters
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {error && (
             <div className="mb-6 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -192,78 +270,45 @@ const FindEvents: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((event) => (
-                <a
-                  key={event.id}
-                  href={`#/event/${event.id}`}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl"
-                >
-                  {/* Banner */}
-                  <div className="relative h-48 bg-gray-100 overflow-hidden">
-                    {event.banner_image_url ? (
-                      <img
-                        src={event.banner_image_url}
-                        alt={event.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-emerald-50 text-emerald-300 text-5xl font-black">
-                        {event.title.charAt(0)}
-                      </div>
-                    )}
-                    <span className="absolute left-3 top-3 rounded-full bg-emerald-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">
-                      {event.category}
+            <>
+              {/* ── Current Events ── */}
+              {currentEvents.length > 0 && (
+                <div className="mb-12">
+                  <div className="flex items-center gap-3 mb-5">
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Current Events
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+                      {currentEvents.length}
                     </span>
                   </div>
-
-                  {/* Card body */}
-                  <div className="flex flex-1 flex-col p-5">
-                    <h3 className="mb-3 line-clamp-2 text-lg font-bold text-gray-900 min-h-[3.25rem]">
-                      {event.title}
-                    </h3>
-                    <div className="mb-4 flex-1 space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Calendar
-                          size={14}
-                          className="shrink-0 text-emerald-500"
-                        />
-                        {formatDate(event.event_date)}
-                      </div>
-                      {event.location && (
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <MapPin
-                            size={14}
-                            className="shrink-0 text-emerald-500"
-                          />
-                          <span className="truncate">{event.location}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between border-t border-gray-50 pt-3 text-xs text-gray-400">
-                      <div className="flex items-center gap-1.5">
-                        {event.organizations?.logo_url ? (
-                          <img
-                            src={event.organizations.logo_url}
-                            alt="org"
-                            className="h-5 w-5 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-5 w-5 rounded-full bg-emerald-100" />
-                        )}
-                        <span className="truncate max-w-[100px]">
-                          {event.organizations?.name ?? "Organizer"}
-                        </span>
-                      </div>
-                      <span className="flex items-center gap-1">
-                        <Users size={12} className="text-emerald-500" />
-                        {event.attendee_count ?? 0} joined
-                      </span>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {currentEvents.map((event) => (
+                      <EventCard key={event.id} event={event} />
+                    ))}
                   </div>
-                </a>
-              ))}
-            </div>
+                </div>
+              )}
+
+              {/* ── Past Events ── */}
+              {pastEvents.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-3 mb-5 border-t pt-5">
+                    <h2 className="text-xl font-bold text-gray-700">
+                      Past Events
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold">
+                      {pastEvents.length}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-75">
+                    {pastEvents.map((event) => (
+                      <EventCard key={event.id} event={event} isPast />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import HeroSlider from "../components/HeroSlider";
-import { useApp } from "../store/AppContext";
+import { supabase, BACKEND_URL, TM_TOKEN_KEY } from "../services/supabase";
 import {
   Calendar,
   MapPin,
@@ -11,9 +11,71 @@ import {
   Users2,
 } from "lucide-react";
 
+type ApiEvent = {
+  id: string;
+  title: string;
+  banner_image_url?: string;
+  event_date: string;
+  location: string;
+  category: string;
+  attendee_count: number;
+  organizations?: { id: string; name: string; logo_url?: string };
+};
+
+const formatDate = (iso: string) => {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("en-MY", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return iso;
+  }
+};
+
+const getToken = async (): Promise<string | null> => {
+  const jwt = localStorage.getItem(TM_TOKEN_KEY);
+  if (jwt) return jwt;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+};
+
 const Home: React.FC = () => {
-  const { events } = useApp();
-  const displayedEvents = events.filter((e) => !e.isBlocked).slice(0, 10);
+  const [events, setEvents] = useState<ApiEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(
+          `${BACKEND_URL}/api/events?limit=100&offset=0`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
+        if (!res.ok) return;
+        const json = await res.json();
+        const now = new Date();
+        const upcoming = (json.events ?? ([] as ApiEvent[]))
+          .filter((e: ApiEvent) => new Date(e.event_date) >= now)
+          .sort(
+            (a: ApiEvent, b: ApiEvent) =>
+              new Date(a.event_date).getTime() -
+              new Date(b.event_date).getTime()
+          )
+          .slice(0, 8);
+        setEvents(upcoming);
+      } catch {
+        // silently fail — section just stays empty
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   return (
     <div className="flex flex-col gap-16 pb-16">
@@ -46,7 +108,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Events Grid */}
+      {/* Upcoming Events */}
       <section className="max-w-7xl mx-auto px-4 w-full">
         <div className="flex justify-between items-end mb-8">
           <div>
@@ -68,51 +130,88 @@ const Home: React.FC = () => {
             />
           </a>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {displayedEvents.map((event) => (
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-72 rounded-2xl bg-gray-100 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : events.length === 0 ? (
+          <div className="py-16 text-center rounded-3xl border border-dashed border-gray-200 bg-white">
+            <Calendar className="mx-auto mb-3 text-gray-300" size={40} />
+            <p className="text-gray-500 font-medium">
+              No upcoming events right now.
+            </p>
             <a
-              key={event.id}
-              href={`#/event/${event.id}`}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 group"
+              href="#/find-events"
+              className="mt-4 inline-block text-sm text-emerald-600 font-bold hover:underline"
             >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={event.bannerUrl}
-                  alt={event.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-emerald-700 shadow-sm">
-                  {event.category}
-                </div>
-              </div>
-              <div className="p-5">
-                <h3 className="font-bold text-lg mb-2 line-clamp-1 group-hover:text-emerald-600 transition-colors">
-                  {event.title}
-                </h3>
-                <div className="flex flex-col gap-2 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className="text-emerald-500" />
-                    {event.dateTime}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin size={14} className="text-emerald-500" />
-                    {event.location}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users size={14} className="text-emerald-500" />
-                    {event.joinedCount} people joined
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                  <span className="text-xs text-gray-400">
-                    By {event.organizerName}
-                  </span>
-                  <span className="text-emerald-600 font-bold">Free</span>
-                </div>
-              </div>
+              Browse all events
             </a>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {events.map((event) => (
+              <a
+                key={event.id}
+                href={`#/event/${event.id}`}
+                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 group"
+              >
+                <div className="relative h-48 overflow-hidden bg-emerald-50">
+                  {event.banner_image_url ? (
+                    <img
+                      src={event.banner_image_url}
+                      alt={event.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-emerald-200 text-5xl font-black select-none">
+                      {event.title.charAt(0)}
+                    </div>
+                  )}
+                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-emerald-700 shadow-sm capitalize">
+                    {event.category}
+                  </div>
+                </div>
+                <div className="p-5">
+                  <h3 className="font-bold text-lg mb-2 line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                    {event.title}
+                  </h3>
+                  <div className="flex flex-col gap-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-2">
+                      <Calendar
+                        size={14}
+                        className="text-emerald-500 shrink-0"
+                      />
+                      {formatDate(event.event_date)}
+                    </div>
+                    {event.location && (
+                      <div className="flex items-center gap-2">
+                        <MapPin
+                          size={14}
+                          className="text-emerald-500 shrink-0"
+                        />
+                        <span className="truncate">{event.location}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                    <span className="text-xs text-gray-400 truncate max-w-[120px]">
+                      {event.organizations?.name ?? "Organizer"}
+                    </span>
+                    <span className="text-emerald-600 font-bold text-sm">
+                      Free
+                    </span>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Sponsor Section */}
@@ -148,9 +247,8 @@ const Home: React.FC = () => {
             </div>
           </div>
         </div>
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-200/20 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-200/20 rounded-full -ml-48 -mb-48 blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-200/20 rounded-full -mr-32 -mt-32 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-200/20 rounded-full -ml-48 -mb-48 blur-3xl" />
       </section>
     </div>
   );

@@ -221,6 +221,7 @@ const EventDetails: React.FC = () => {
     );
   }
 
+  const isPast = new Date(event.event_date) < new Date();
   const parking = parkingLabel(event.parking_info);
   const age = ageLabel(event.age_restriction, event.age_min, event.age_max);
   const orgName =
@@ -258,9 +259,16 @@ const EventDetails: React.FC = () => {
           <span className="bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block">
             {event.category}
           </span>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg max-w-3xl">
-            {event.title}
-          </h1>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold drop-shadow-lg max-w-3xl">
+              {event.title}
+            </h1>
+            {isPast && (
+              <span className="shrink-0 self-center rounded-full bg-gray-700/80 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white">
+                Ended
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-6 text-emerald-50 text-sm">
             <div className="flex items-center gap-2">
               {event.organizations?.logo_url ? (
