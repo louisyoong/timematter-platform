@@ -3,7 +3,7 @@ import { useApp } from '../store/AppContext';
 import { supabase, BACKEND_URL, TM_TOKEN_KEY } from '../services/supabase';
 import {
   Calendar, MapPin, Users, ArrowLeft, ChevronRight,
-  Mail, User as UserIcon, Search,
+  Mail, User as UserIcon, Search, UserCheck, Pencil,
 } from 'lucide-react';
 
 type OrgEvent = {
@@ -266,55 +266,94 @@ const OrganizerEvents: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {events.map((event) => (
-            <button
-              key={event.id}
-              onClick={() => {
-                if (event.status === 'draft') {
-                  window.location.hash = `/create-event?id=${event.id}`;
-                } else {
-                  openAttendees(event);
-                }
-              }}
-              className="w-full flex gap-4 items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-100 transition-all text-left group"
-            >
-              {event.banner_image_url ? (
-                <img
-                  src={event.banner_image_url}
-                  alt={event.title}
-                  className="h-16 w-24 rounded-xl object-cover shrink-0"
-                />
-              ) : (
-                <div className="h-16 w-24 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-300 text-3xl font-black shrink-0">
-                  {event.title.charAt(0)}
-                </div>
-              )}
+          {events.map((event) => {
+            const eventDay = new Date(event.event_date);
+            const now = new Date();
+            const isToday =
+              eventDay.getFullYear() === now.getFullYear() &&
+              eventDay.getMonth() === now.getMonth() &&
+              eventDay.getDate() === now.getDate();
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${categoryColors[event.category?.toLowerCase()] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {event.category}
-                  </span>
-                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${event.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {event.status}
-                  </span>
-                </div>
-                <h3 className="font-bold text-gray-900 text-base line-clamp-1">{event.title}</h3>
-                <div className="flex flex-wrap gap-4 mt-1 text-xs text-gray-400">
-                  <span className="flex items-center gap-1"><Calendar size={11} />{formatDate(event.event_date)}</span>
-                  {event.location && <span className="flex items-center gap-1"><MapPin size={11} />{event.location}</span>}
-                </div>
-              </div>
+            return (
+              <div
+                key={event.id}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-100 transition-all"
+              >
+                <div className="flex gap-4 items-center p-4">
+                  {/* Thumbnail */}
+                  {event.banner_image_url ? (
+                    <img
+                      src={event.banner_image_url}
+                      alt={event.title}
+                      className="h-16 w-24 rounded-xl object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="h-16 w-24 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-300 text-3xl font-black shrink-0 select-none">
+                      {event.title.charAt(0)}
+                    </div>
+                  )}
 
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <div className="flex items-center gap-1 text-sm font-bold text-emerald-600">
-                  <Users size={14} /> {event.attendee_count ?? 0}
+                  {/* Info — clicking opens attendees for published, edit form for draft */}
+                  <button
+                    onClick={() => {
+                      if (event.status === 'draft') {
+                        window.location.hash = `/create-event?id=${event.id}`;
+                      } else {
+                        openAttendees(event);
+                      }
+                    }}
+                    className="min-w-0 flex-1 text-left group"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${categoryColors[event.category?.toLowerCase()] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {event.category}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${event.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {event.status}
+                      </span>
+                      {isToday && (
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                          Today
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-base line-clamp-1 group-hover:text-emerald-700 transition-colors">{event.title}</h3>
+                    <div className="flex flex-wrap gap-4 mt-1 text-xs text-gray-400">
+                      <span className="flex items-center gap-1"><Calendar size={11} />{formatDate(event.event_date)}</span>
+                      {event.location && <span className="flex items-center gap-1"><MapPin size={11} />{event.location}</span>}
+                    </div>
+                  </button>
+
+                  {/* Right actions */}
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="flex items-center gap-1 text-sm font-bold text-emerald-600">
+                      <Users size={14} /> {event.attendee_count ?? 0}
+                      <span className="text-[10px] font-normal text-gray-400 ml-0.5">joined</span>
+                    </div>
+                    <button
+                      onClick={() => { window.location.hash = `/create-event?id=${event.id}`; }}
+                      title="Edit event"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-semibold transition-colors"
+                    >
+                      <Pencil size={12} /> Edit
+                    </button>
+                  </div>
                 </div>
-                <p className="text-[10px] text-gray-400">attendees</p>
-                <ChevronRight size={16} className="text-gray-300 group-hover:text-emerald-500 transition-colors mt-1" />
+
+                {/* Check-in button — only on event day */}
+                {isToday && event.status === 'published' && (
+                  <div className="px-4 pb-4">
+                    <button
+                      onClick={() => { window.location.hash = `/checkin/${event.id}`; }}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors"
+                    >
+                      <UserCheck size={15} /> Check In Attendee
+                    </button>
+                  </div>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

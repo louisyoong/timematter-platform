@@ -24,13 +24,13 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('silverlink_user');
+    const saved = localStorage.getItem('timematter_user');
     return saved ? JSON.parse(saved) : null;
   });
   const [viewAsAttendee, setViewAsAttendee] = useState(false);
 
   const [users, setUsers] = useState<User[]>([
-    { id: '1', name: 'Super Admin', email: 'admin@silverlink.com', role: UserRole.SUPER_ADMIN, isBlocked: false, joinedEvents: [] },
+    { id: '1', name: 'Super Admin', email: 'admin@timematter.club', role: UserRole.SUPER_ADMIN, isBlocked: false, joinedEvents: [] },
     { id: '2', name: 'Elder Care Org', email: 'org@care.com', role: UserRole.ORGANIZER, isBlocked: false, joinedEvents: [] },
     { id: '3', name: 'John Doe', email: 'john@example.com', role: UserRole.USER, isBlocked: false, joinedEvents: [] },
   ]);
@@ -53,9 +53,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('silverlink_user', JSON.stringify(currentUser));
+      localStorage.setItem('timematter_user', JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem('silverlink_user');
+      localStorage.removeItem('timematter_user');
     }
   }, [currentUser]);
 

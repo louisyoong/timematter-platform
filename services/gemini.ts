@@ -9,9 +9,9 @@ export const askHelpAssistant = async (question: string) => {
     // Fix: Using the correct model name and direct property access as per guidelines.
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `You are an AI assistant for SilverLink, a platform dedicated to the aging society (elderly people). 
+      contents: `You are an AI assistant for TimeMatter, a platform dedicated to the aging society (elderly people). 
       Provide a helpful, empathetic, and clear answer to this question: ${question}. 
-      SilverLink helps people find community events, health workshops, and social gatherings.`,
+      TimeMatter helps people find community events, health workshops, and social gatherings.`,
       config: {
         temperature: 1,
         topP: 0.95,

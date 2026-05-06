@@ -1,5 +1,5 @@
 {
-  "name": "SilverLink - Aging Society Event Platform",
+  "name": "Timematter - Aging Society Event Platform",
   "description": "A comprehensive community platform for the aging society to find events, articles, and connect with organizers. Features role-based access for users, organizers, and super admins.",
   "requestFramePermissions": [
     "geolocation"

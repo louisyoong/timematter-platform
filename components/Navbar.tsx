@@ -84,7 +84,7 @@ const Navbar: React.FC = () => {
       {isOrganizer && !viewAsAttendee && (
         <a
           href="#/create-event"
-          className="hover:text-emerald-500 font-medium flex items-center gap-1 text-emerald-700 bg-emerald-100 p-2 rounded-lg"
+          className="hover:text-emerald-100 font-medium flex items-center gap-1 text-white bg-emerald-600 p-2 rounded-lg"
         >
           <PlusCircle size={18} /> Create Event
         </a>

@@ -9,7 +9,7 @@ const Articles: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
       <div className="mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">SilverLink Journal</h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">TimeMatter Journal</h1>
         <p className="text-gray-600 text-lg">Knowledge and stories to inspire your golden years.</p>
       </div>
 

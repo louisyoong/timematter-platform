@@ -5,8 +5,8 @@ import { ChevronDown, MessageSquare, Phone, Mail, Sparkles, Send } from 'lucide-
 import { askHelpAssistant } from '../services/gemini';
 
 const faqs: FAQ[] = [
-  { question: "How do I join an event?", answer: "To join an event, click on the event you're interested in and hit the 'Join Event' button. You'll need to be logged in to your SilverLink account." },
-  { question: "Are events free?", answer: "Currently, most community-led events on SilverLink are free. Some specialized workshops may have a nominal fee, which will be clearly indicated." },
+  { question: "How do I join an event?", answer: "To join an event, click on the event you're interested in and hit the 'Join Event' button. You'll need to be logged in to your TimeMatter account." },
+  { question: "Are events free?", answer: "Currently, most community-led events on TimeMatter are free. Some specialized workshops may have a nominal fee, which will be clearly indicated." },
   { question: "Can I host my own event?", answer: "Yes! If you're an organizer or represent a community group, you can sign up as an 'Organizer' and start creating events." },
   { question: "How do I cancel my attendance?", answer: "You can manage your event attendance in your profile dashboard. Simply find the event and click 'Withdraw'." }
 ];
@@ -44,7 +44,7 @@ const HelpCenter: React.FC = () => {
             <h2 className="text-2xl font-bold">Ask Our AI Assistant</h2>
           </div>
           <p className="text-emerald-100 mb-8 max-w-2xl">
-            Have a specific question about our platform or aging gracefully? Our SilverLink AI is here to help 24/7.
+            Have a specific question about our platform or aging gracefully? Our TimeMatter AI is here to help 24/7.
           </p>
           <form onSubmit={handleAskAI} className="relative mb-6">
             <input 
@@ -132,7 +132,7 @@ const HelpCenter: React.FC = () => {
 
           <div className="mt-8 flex flex-wrap gap-6 justify-center text-sm font-medium text-gray-500">
             <div className="flex items-center gap-2"><Phone size={16} className="text-emerald-500" /> +1 (800) 123-4567</div>
-            <div className="flex items-center gap-2"><Mail size={16} className="text-emerald-500" /> support@silverlink.com</div>
+            <div className="flex items-center gap-2"><Mail size={16} className="text-emerald-500" /> support@timematter.club</div>
           </div>
         </section>
       </div>

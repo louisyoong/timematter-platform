@@ -20,6 +20,7 @@ import SwitchOrganization from './pages/SwitchOrganization';
 import OrganizerEvents from './pages/OrganizerEvents';
 import MyTickets from './pages/MyTickets';
 import AdminEvents from './pages/AdminEvents';
+import CheckInAttendee from './pages/CheckInAttendee';
 import { supabase, BACKEND_URL, TM_TOKEN_KEY } from './services/supabase';
 import { UserRole } from './types';
 
@@ -128,6 +129,7 @@ const AppContent: React.FC = () => {
     if (hash === '/organizer-events') return <OrganizerEvents />;
     if (hash === '/tickets') return <MyTickets />;
     if (hash === '/admin-events') return <AdminEvents />;
+    if (hash.startsWith('/checkin/')) return <CheckInAttendee />;
     if (hash.startsWith('/event/')) return <EventDetails />;
 
     const eventMatch = hash.match(/\/event\/(.+)/);
