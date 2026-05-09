@@ -351,7 +351,7 @@ const CreateEvent: React.FC = () => {
 
   // ─── Render form ─────────────────────────────────────────────────────────────
   return (
-    <div className="bg-[linear-gradient(180deg,#f4fbf7_0%,#ffffff_100%)] px-4 py-10 md:py-14">
+    <div className="bg-[linear-gradient(180deg, #fffdf5 0%, #ffffff 100%)] px-4 py-10 md:py-14">
       <div className="mx-auto w-full max-w-2xl space-y-5">
         <div className="mb-2 flex items-start justify-between gap-4">
           <div>

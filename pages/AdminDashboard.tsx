@@ -1,13 +1,20 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useApp } from '../store/AppContext';
-import { UserRole } from '../types';
-import { supabase, BACKEND_URL } from '../services/supabase';
-import { ShieldAlert, UserX, UserCheck, Users, RefreshCw, Trash2 } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from "react";
+import { useApp } from "../store/AppContext";
+import { UserRole } from "../types";
+import { supabase, BACKEND_URL } from "../services/supabase";
+import {
+  ShieldAlert,
+  UserX,
+  UserCheck,
+  Users,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 
 type AdminUser = {
   id: string;
   email: string;
-  account_type: 'individual' | 'company';
+  account_type: "individual" | "company";
   role: string;
   is_blocked: boolean;
   title?: string;
@@ -20,7 +27,7 @@ const AdminDashboard: React.FC = () => {
   const { currentUser } = useApp();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   if (!currentUser || currentUser.role !== UserRole.ADMIN) {
@@ -37,37 +44,52 @@ const AdminDashboard: React.FC = () => {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setError('Session expired.'); return; }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        setError("Session expired.");
+        return;
+      }
 
       const res = await fetch(`${BACKEND_URL}/api/admin/users`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const json = await res.json();
-      if (!res.ok) { setError(json.error || 'Failed to load users.'); return; }
+      if (!res.ok) {
+        setError(json.error || "Failed to load users.");
+        return;
+      }
       setUsers(json.users || []);
     } catch {
-      setError('Unable to connect to the server.');
+      setError("Unable to connect to the server.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleBlockToggle = async (userId: string, isBlocked: boolean) => {
     setActionLoading(`${userId}:block`);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
-      const action = isBlocked ? 'unblock' : 'block';
-      const res = await fetch(`${BACKEND_URL}/api/admin/users/${userId}/${action}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+      const action = isBlocked ? "unblock" : "block";
+      const res = await fetch(
+        `${BACKEND_URL}/api/admin/users/${userId}/${action}`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }
+      );
       if (res.ok) {
         await fetchUsers();
       } else {
@@ -75,25 +97,29 @@ const AdminDashboard: React.FC = () => {
         setError(json.error || `Failed to ${action} user.`);
       }
     } catch {
-      setError('Unable to connect to the server.');
+      setError("Unable to connect to the server.");
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    const confirmed = window.confirm('Are you sure? This will permanently delete this user and all their data.');
+    const confirmed = window.confirm(
+      "Are you sure? This will permanently delete this user and all their data."
+    );
     if (!confirmed) return;
 
     setActionLoading(`${userId}:delete`);
-    setError('');
+    setError("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
       const res = await fetch(`${BACKEND_URL}/api/admin/users/${userId}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -101,19 +127,19 @@ const AdminDashboard: React.FC = () => {
         await fetchUsers();
       } else {
         const json = await res.json();
-        setError(json.error || 'Failed to delete user.');
+        setError(json.error || "Failed to delete user.");
       }
     } catch {
-      setError('Unable to connect to the server.');
+      setError("Unable to connect to the server.");
     } finally {
       setActionLoading(null);
     }
   };
 
   const displayName = (u: AdminUser) =>
-    u.account_type === 'company'
-      ? u.company_name || '—'
-      : [u.title, u.gender].filter(Boolean).join(' / ') || '—';
+    u.account_type === "company"
+      ? u.company_name || "—"
+      : [u.title, u.gender].filter(Boolean).join(" / ") || "—";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
@@ -124,10 +150,12 @@ const AdminDashboard: React.FC = () => {
           <p className="mt-1 text-gray-500">Manage platform accounts.</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-teal-100 bg-teal-50 px-5 py-3">
-            <Users className="text-teal-600" size={20} />
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-300 px-5 py-3">
+            <Users className="text-gray-700" size={20} />
             <div>
-              <p className="text-xs font-bold uppercase text-gray-400">Total Users</p>
+              <p className="text-xs font-bold uppercase text-gray-800">
+                Total Users
+              </p>
               <p className="text-xl font-bold text-teal-700">{users.length}</p>
             </div>
           </div>
@@ -137,7 +165,7 @@ const AdminDashboard: React.FC = () => {
             className="rounded-2xl border border-gray-200 bg-white p-3 text-gray-500 shadow-sm transition-all hover:border-emerald-400 hover:text-emerald-600 disabled:opacity-50"
             title="Refresh"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
@@ -179,10 +207,12 @@ const AdminDashboard: React.FC = () => {
 
                 {/* Info */}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-gray-900">{u.email}</p>
+                  <p className="truncate font-semibold text-gray-900">
+                    {u.email}
+                  </p>
                   <p className="mt-0.5 text-xs text-gray-400">
                     <span className="capitalize">{u.account_type}</span>
-                    {' · '}
+                    {" · "}
                     {displayName(u)}
                   </p>
                 </div>
@@ -191,25 +221,28 @@ const AdminDashboard: React.FC = () => {
                 <span
                   className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
                     u.is_blocked
-                      ? 'bg-red-100 text-red-600'
-                      : 'bg-emerald-100 text-emerald-700'
+                      ? "bg-red-100 text-red-600"
+                      : "bg-amber-100 text-amber-700"
                   }`}
                 >
-                  {u.is_blocked ? 'Blocked' : 'Active'}
+                  {u.is_blocked ? "Blocked" : "Active"}
                 </span>
 
                 {/* Block / Unblock and Delete — admins cannot be modified */}
-                {u.role !== 'ADMIN' && (
+                {u.role !== "ADMIN" && (
                   <div className="flex shrink-0 items-center gap-2">
                     <button
                       onClick={() => handleBlockToggle(u.id, u.is_blocked)}
-                      disabled={actionLoading === `${u.id}:block` || actionLoading === `${u.id}:delete`}
+                      disabled={
+                        actionLoading === `${u.id}:block` ||
+                        actionLoading === `${u.id}:delete`
+                      }
                       className={`rounded-xl p-3 transition-all disabled:opacity-50 ${
                         u.is_blocked
-                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                          : 'bg-red-50 text-red-600 hover:bg-red-100'
+                          ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                          : "bg-red-50 text-red-600 hover:bg-red-100"
                       }`}
-                      title={u.is_blocked ? 'Unblock user' : 'Block user'}
+                      title={u.is_blocked ? "Unblock user" : "Block user"}
                     >
                       {actionLoading === `${u.id}:block` ? (
                         <RefreshCw size={18} className="animate-spin" />
@@ -222,7 +255,10 @@ const AdminDashboard: React.FC = () => {
 
                     <button
                       onClick={() => handleDeleteUser(u.id)}
-                      disabled={actionLoading === `${u.id}:block` || actionLoading === `${u.id}:delete`}
+                      disabled={
+                        actionLoading === `${u.id}:block` ||
+                        actionLoading === `${u.id}:delete`
+                      }
                       className="rounded-xl bg-gray-900 p-3 text-white transition-all hover:bg-black disabled:opacity-50"
                       title="Delete user"
                     >
