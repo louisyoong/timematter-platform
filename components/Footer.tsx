@@ -10,15 +10,17 @@ import {
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-gray-900 text-gray-300 py-12">
+    <footer className="bg-[#0f0b09] text-gray-300 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-emerald-500 rounded flex items-center justify-center">
-                <span className="text-white font-bold">T</span>
-              </div>
+              <img
+                src="/images/logo.png"
+                alt="TimeMatter"
+                className="w-8 h-8 rounded object-contain"
+              />
               <span className="text-2xl font-bold text-white">TimeMatter</span>
             </div>
             <p className="text-sm leading-relaxed mb-6">
@@ -26,13 +28,13 @@ const Footer: React.FC = () => {
               wellness programs, and social connectivity.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="hover:text-emerald-500 transition-colors">
+              <a href="#" className="hover:text-amber-700 transition-colors">
                 <Facebook size={20} />
               </a>
-              <a href="#" className="hover:text-emerald-500 transition-colors">
+              <a href="#" className="hover:text-amber-700 transition-colors">
                 <Twitter size={20} />
               </a>
-              <a href="#" className="hover:text-emerald-500 transition-colors">
+              <a href="#" className="hover:text-amber-700 transition-colors">
                 <Instagram size={20} />
               </a>
             </div>
@@ -45,7 +47,7 @@ const Footer: React.FC = () => {
               <li>
                 <a
                   href="#/find-events"
-                  className="hover:text-emerald-500 transition-colors"
+                  className="hover:text-amber-700 transition-colors"
                 >
                   Find Events
                 </a>
@@ -53,7 +55,7 @@ const Footer: React.FC = () => {
               <li>
                 <a
                   href="#/articles"
-                  className="hover:text-emerald-500 transition-colors"
+                  className="hover:text-amber-700 transition-colors"
                 >
                   Health Articles
                 </a>
@@ -61,7 +63,7 @@ const Footer: React.FC = () => {
               <li>
                 <a
                   href="#/help"
-                  className="hover:text-emerald-500 transition-colors"
+                  className="hover:text-amber-700 transition-colors"
                 >
                   Help Center
                 </a>
@@ -69,7 +71,7 @@ const Footer: React.FC = () => {
               <li>
                 <a
                   href="#/login"
-                  className="hover:text-emerald-500 transition-colors"
+                  className="hover:text-amber-700 transition-colors"
                 >
                   Become an Organizer
                 </a>
@@ -82,15 +84,14 @@ const Footer: React.FC = () => {
             <h3 className="text-white font-semibold mb-4">Contact Us</h3>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
-                <Mail size={16} className="text-emerald-500" />{" "}
+                <Mail size={16} className="text-gray-500" />{" "}
                 support@timematter.club
               </li>
               <li className="flex items-center gap-2">
-                <Phone size={16} className="text-emerald-500" /> +1 (800)
-                123-4567
+                <Phone size={16} className="text-gray-500" /> +1 (800) 123-4567
               </li>
               <li className="flex items-center gap-2">
-                <MapPin size={16} className="text-emerald-500" /> 123 Community
+                <MapPin size={16} className="text-gray-500" /> 123 Community
                 Blvd, Health City
               </li>
             </ul>

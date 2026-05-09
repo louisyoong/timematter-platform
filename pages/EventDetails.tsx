@@ -213,7 +213,7 @@ const EventDetails: React.FC = () => {
         </p>
         <a
           href="#/find-events"
-          className="mt-6 text-emerald-600 font-bold hover:underline"
+          className="mt-6 text-amber-600 font-bold hover:underline"
         >
           Return to browse
         </a>
@@ -240,7 +240,7 @@ const EventDetails: React.FC = () => {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-emerald-50 flex items-center justify-center text-emerald-200 text-[10rem] font-black select-none">
+          <div className="w-full h-full bg-amber-50 flex items-center justify-center text-amber-200 text-[10rem] font-black select-none">
             {event.title.charAt(0)}
           </div>
         )}
@@ -256,7 +256,7 @@ const EventDetails: React.FC = () => {
         </div>
 
         <div className="absolute bottom-12 left-0 right-0 max-w-7xl mx-auto px-4 md:px-8 text-white">
-          <span className="bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block">
+          <span className="bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block">
             {event.category}
           </span>
           <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -269,7 +269,7 @@ const EventDetails: React.FC = () => {
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-6 text-emerald-50 text-sm">
+          <div className="flex flex-wrap items-center gap-6 text-amber-50 text-sm">
             <div className="flex items-center gap-2">
               {event.organizations?.logo_url ? (
                 <img
@@ -293,7 +293,7 @@ const EventDetails: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Main content */}
           <div className="lg:col-span-8 bg-white rounded-3xl shadow-xl border border-gray-100 p-8 md:p-12">
-            <div className="flex items-center gap-2 text-emerald-600 mb-6 font-bold uppercase tracking-widest text-sm">
+            <div className="flex items-center gap-2 text-amber-600 mb-6 font-bold uppercase tracking-widest text-sm">
               <Info size={17} /> About this event
             </div>
 
@@ -307,7 +307,7 @@ const EventDetails: React.FC = () => {
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {parking && (
                 <div className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
-                  <Car size={18} className="mt-0.5 text-emerald-500 shrink-0" />
+                  <Car size={18} className="mt-0.5 text-amber-500 shrink-0" />
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-0.5">
                       Parking
@@ -322,7 +322,7 @@ const EventDetails: React.FC = () => {
                 <div className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
                   <ShieldCheck
                     size={18}
-                    className="mt-0.5 text-emerald-500 shrink-0"
+                    className="mt-0.5 text-amber-500 shrink-0"
                   />
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-0.5">
@@ -353,7 +353,7 @@ const EventDetails: React.FC = () => {
                     className="h-14 w-14 rounded-2xl object-cover border border-gray-200"
                   />
                 ) : (
-                  <div className="h-14 w-14 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 text-xl font-bold">
+                  <div className="h-14 w-14 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700 text-xl font-bold">
                     {organizerName.charAt(0)}
                   </div>
                 )}
@@ -376,7 +376,7 @@ const EventDetails: React.FC = () => {
               {/* Date, location */}
               <div className="space-y-5 mb-8">
                 <div className="flex gap-4">
-                  <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
+                  <div className="w-11 h-11 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
                     <Calendar size={20} />
                   </div>
                   <div>
@@ -428,13 +428,13 @@ const EventDetails: React.FC = () => {
               {/* Join / Leave button */}
               {event.is_joined ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl py-4 text-emerald-700 font-bold text-sm">
+                  <div className="flex items-center justify-center gap-2 bg-amber-900 border border-amber-500 rounded-2xl py-4 text-white font-bold text-sm">
                     <Check size={18} /> You&apos;re attending
                   </div>
                   <button
                     onClick={handleLeave}
                     disabled={joining}
-                    className="w-full py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-60"
+                    className="w-full py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-700 hover:text-white transition-colors disabled:opacity-60"
                   >
                     {joining ? "Processing…" : "Leave event"}
                   </button>
@@ -443,7 +443,7 @@ const EventDetails: React.FC = () => {
                 <button
                   onClick={handleJoin}
                   disabled={joining}
-                  className="w-full py-4 rounded-2xl font-bold text-lg bg-emerald-600 text-white shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full py-4 rounded-2xl font-bold text-lg bg-[#2d1912] text-[#ebdba8] shadow-lg hover:bg-[#4a2b1a] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {joining ? "Processing…" : "Join for Free"}
                 </button>
@@ -461,7 +461,7 @@ const EventDetails: React.FC = () => {
               {/* Share */}
               <button
                 onClick={handleShare}
-                className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 text-emerald-600 font-bold hover:bg-emerald-50 rounded-2xl border-2 border-emerald-600 transition-colors text-sm"
+                className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 text-[#4f3126] font-bold hover:bg-[#4f3126] hover:text-white rounded-2xl border-2 border-[#4f3126] transition-colors text-sm"
               >
                 <Share2 size={18} /> Share Event
               </button>
