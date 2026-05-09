@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { supabase, BACKEND_URL } from '../services/supabase';
 import { useApp } from '../store/AppContext';
 import { UserRole } from '../types';
-import { ArrowRight, Building2, MapPin, Upload } from 'lucide-react';
+import { ArrowRight, Building2, MapPin, Upload, X } from 'lucide-react';
 
 // ─── Static option lists ─────────────────────────────────────────────────────
 
@@ -144,6 +144,8 @@ const CompleteProfile: React.FC = () => {
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   // Auto-calculate age from DOB dropdowns
   const computedAge = useMemo(() => calcAge(dobDay, dobMonth, dobYear), [dobDay, dobMonth, dobYear]);
@@ -153,6 +155,7 @@ const CompleteProfile: React.FC = () => {
     e.preventDefault();
     setError('');
 
+    if (!agreedToTerms) { setError('Please read and accept the Terms & Conditions to continue.'); return; }
     if (!isCompany) {
       if (!dateOfBirth) { setError('Please select a complete date of birth.'); return; }
       if (computedAge === null || computedAge < 1) { setError('Date of birth is invalid.'); return; }
@@ -399,11 +402,32 @@ const CompleteProfile: React.FC = () => {
                 {/* Row 5: Images — 3 equal columns on md+, 1 col on mobile */}
                 <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                   <ImageUpload label="Profile Photo" value={profilePhoto} onChange={setProfilePhoto} onError={setError} />
-                  <ImageUpload label="ID Card Front" required value={idFront} onChange={setIdFront} onError={setError} />
-                  <ImageUpload label="ID Card Back" required value={idBack} onChange={setIdBack} onError={setError} />
+                  <ImageUpload label="Identity Card Front" required value={idFront} onChange={setIdFront} onError={setError} />
+                  <ImageUpload label="Identity Card Back" required value={idBack} onChange={setIdBack} onError={setError} />
                 </div>
               </div>
             )}
+
+            {/* Terms & Conditions checkbox */}
+            <div className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
+              <input
+                id="terms"
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-emerald-600"
+              />
+              <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                I have read and agree to the{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="font-bold text-emerald-600 hover:underline"
+                >
+                  Terms &amp; Conditions
+                </button>
+              </label>
+            </div>
 
             {/* Submit */}
             <button
@@ -417,6 +441,65 @@ const CompleteProfile: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {/* Terms & Conditions modal */}
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="relative w-full max-w-lg max-h-[80vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">Terms &amp; Conditions</h2>
+              <button
+                onClick={() => setShowTerms(false)}
+                className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-y-auto px-6 py-5 text-sm text-gray-700 leading-relaxed space-y-4">
+              <p>
+                By creating an account on Timematter, you agree to provide accurate and truthful information during registration.
+              </p>
+              <p>We only collect basic identity and contact information for:</p>
+              <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                <li>Account verification</li>
+                <li>Event participation management</li>
+                <li>Preventing scams, fake accounts, abuse, or harmful activities on the platform</li>
+              </ul>
+              <p>
+                Your personal information will <strong>not</strong> be sold, shared, or used for unrelated third-party marketing purposes.
+              </p>
+              <p>
+                Timematter is committed to protecting user privacy and creating a safe community environment for all members.
+              </p>
+              <p>By using this platform, you agree to:</p>
+              <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                <li>Respect other users and event organizers</li>
+                <li>Not use fake identities or misleading information</li>
+                <li>Not engage in scam, spam, harassment, or illegal activities</li>
+              </ul>
+              <p>
+                We reserve the right to suspend or remove accounts that violate these terms to protect the community.
+              </p>
+              <p>
+                If you have any questions regarding your data or account, please contact the Timematter support team.
+              </p>
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-gray-100">
+              <button
+                onClick={() => { setAgreedToTerms(true); setShowTerms(false); }}
+                className="w-full py-3 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors"
+              >
+                I Agree &amp; Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

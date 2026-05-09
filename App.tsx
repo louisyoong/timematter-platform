@@ -21,6 +21,8 @@ import OrganizerEvents from './pages/OrganizerEvents';
 import MyTickets from './pages/MyTickets';
 import AdminEvents from './pages/AdminEvents';
 import CheckInAttendee from './pages/CheckInAttendee';
+import CreateArticle from './pages/CreateArticle';
+import ArticleDetail from './pages/ArticleDetail';
 import { supabase, BACKEND_URL, TM_TOKEN_KEY } from './services/supabase';
 import { UserRole } from './types';
 
@@ -117,6 +119,8 @@ const AppContent: React.FC = () => {
     if (hash === '/find-events') return <FindEvents />;
     if (hash.startsWith('/create-event')) return <CreateEvent />;
     if (hash === '/articles') return <Articles />;
+    if (hash === '/create-article') return <CreateArticle />;
+    if (hash.startsWith('/article/')) return <ArticleDetail />;
     if (hash === '/help') return <HelpCenter />;
     if (hash === '/login') return <Login />;
     if (hash === '/signup') return <SignUp />;
